@@ -58,6 +58,10 @@ function win_load() {
 
 		var anvil = new Anvil();
 
+		var CANVAS_TILE = document.createElement( "canvas" );
+		var CANVAS_ENT = document.createElement( "canvas" );
+		var CANVAS_VIEW = document.getElementById( "viewport" );
+
 		var last_ts = -1, ticks;
 		function game_loop( ts ) {
 			if( last_ts == -1 ) last_ts = ts;
