@@ -2,14 +2,68 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Hello, World! - A-Frame</title>
+    <title>VR Development</title>
     <script src="https://aframe.io/releases/1.0.3/aframe.min.js"></script>
+    <script src="js/turnControls.js"></script>
+    <script src="js/rotational.js"></script>
   </head>
   <body>
+    <script>
+      AFRAME.registerComponent('canvas-updater', {
+        dependencies: ['geometry', 'material'],
+        tick: function() {
+          var el = this.el;
+          var material;
+          material = el.getObject3D('mesh').material;
+          if(!material.map) return;
+          material.map.needsUpdate = true;
+        }
+      });
+
+      AFRAME.registerComponent('draw-canvas', {
+        schema: {
+          canvas: {
+            type: 'selector'
+          }
+        },
+        init: function () {
+          console.log("init")
+          this.canvas = this.data.canvas;
+          this.ctx = this.canvas.getContext('2d');
+          this.img = new Image();
+          this.img.loaded = false;
+          this.addEventListener("load", function() {
+            this.img.loaded = true;
+          });
+          this.img.src="/assets/background.png";
+          this.ctx.drawImage(this.img, 0, 0);
+          console.log("init")
+          // Draw on canvas...
+          ctx.fillStyle = "000000";
+          ctx.drawRect(0,0,300,300);
+          ctx.fill();
+        },
+        tick: function(t) {
+          var canvas = this.canvas;
+          var ctx = this.ctx;
+          ctx.drawImage(this.img, 0, 0);
+          ctx.fillStyle = "000000";
+          ctx.drawRect(0,0,300,300);
+        }
+      });
+    </script>
     <a-scene>
-      <a-cylinder position="0 0 0" radius="3.8" height="7.2" color="#FFC65D" material="side: double" open-ended="true"></a-cylinder>
-      <a-plane position="0 0 -4" rotation="-90 0 0" width="4" height="4" color="#7BC8A4"></a-plane>
-      <a-sky color="#ECECEC"></a-sky>
+      <a-camera>
+        <a-cursor cursor-visible="true"> </a-cursor>
+      </a-camera>
+      <a-assets>
+        <canvas id="theCanvas"> </canvas>
+      </a-assets>
+      <a-cylinder material="src: #theCanvas; side: double" canvas-updater draw-canvas="canvas: #theCanvas" position="0 0.5 0" radius="3.8" height="7.2" open-ended="true"></a-cylinder>
+      <a-sphere color="#1a8961" position="0 -3.1 0" radius="3.8" theta-start="90" theta-length="90" material="side:double"></a-sphere>
+      <a-sphere color="#588dbe" position="0 4.1 0" radius="3.8" theta-start="0" theta-length="90" material="side:double"></a-sphere>
+      <a-entity hand-controls laser-controls raycaster="far: 4" laser-controls line="color: red; opacity: 0.75"
+                oculus-go-controls="buttonTouchedColor: #10bde8" oculus-go-controls="triggerDown: "></a-entity>
     </a-scene>
   </body>
 </html>
