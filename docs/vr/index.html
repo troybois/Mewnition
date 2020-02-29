@@ -6,9 +6,10 @@
     <script src="https://aframe.io/releases/1.0.3/aframe.min.js"></script>
   </head>
   <body>
-  <a-scene>
-    <a-cylinder src="assets/background.png" position="0 1.5 0" normal-scale="1 1" height="7.2" radius="3.8"
-                side="double" open-ended="true"> </a-cylinder>
-  </a-scene>
+    <a-scene>
+      <a-cylinder position="0 0 0" radius="3.8" height="7.2" color="#FFC65D" material="side: double" open-ended="true"></a-cylinder>
+      <a-plane position="0 0 -4" rotation="-90 0 0" width="4" height="4" color="#7BC8A4"></a-plane>
+      <a-sky color="#ECECEC"></a-sky>
+    </a-scene>
   </body>
 </html>
