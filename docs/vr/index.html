@@ -1,4 +1,64 @@
 <!DOCTYPE html>
+<<<<<<< HEAD
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>VR Development</title>
+    <script src="https://aframe.io/releases/1.0.3/aframe.min.js"></script>
+  </head>
+  <body>
+    <script>
+      AFRAME.registerComponent('canvas-updater', {
+          dependencies: ['geometry', 'material'],
+
+          tick: function () {
+        var el = this.el;
+        var material;
+
+        material = el.getObject3D('mesh').material;
+        if (!material.map) { return; }
+              material.map.needsUpdate = true;
+          }
+      });
+
+      AFRAME.registerComponent('draw-game', {
+          schema: {
+              canvas: {
+                  type: 'selector'
+              }
+          },
+          init: function() {
+              var canvas = this.canvas = this.data.canvas;
+              canvas.width = 3840;
+              canvas.height = 1536;
+              this.x = 0;
+              var ctx = this.ctx = canvas.getContext('2d');
+              var img = this.img = new Image();
+              img.src = "assets/background.png";
+          },
+          tick: function(t) {
+              var canvas = this.canvas;
+              var ctx = this.ctx;
+              ctx.drawImage( this.img, 0, 0 );
+              this.x += 1;
+              ctx.clearRect( this.x, 0, 24, 24 );
+          }
+      });
+    </script>
+    <a-scene>
+      <a-assets>
+        <canvas id="theCanvas"> </canvas>
+      </a-assets>
+      <a-camera look-controls>
+        <a-cursor a-cursor color="red" fuse="true" timeout="500"></a-cursor>
+      </a-camera>
+      <a-cylinder id="pill" material="src: #theCanvas; side: double" canvas-updater draw-game="canvas: #theCanvas" position="0 0.5 0" radius="3.05" height="7.5" open-ended="true"></a-cylinder>
+      <a-sphere color="#1a8961" position="0 -3.1 0" radius="3.05" theta-start="90" theta-length="90" material="side:double"></a-sphere>
+      <a-sphere color="#588dbe" position="0 4.1 0" radius="3.05" theta-start="0" theta-length="90" material="side:double"></a-sphere>
+      <a-entity oculus-go-controls="buttonTouchedColor: #10bde8"></a-entity>
+    </a-scene>
+  </body>
+=======
 <html lang="en">
     <head>
         <meta charset="UTF-8">
@@ -664,10 +724,24 @@ win_load();
                     if( window.height == -1 ) window.height = this.el.object3D.position.y;
                 }
             });
+           <!-- AFRAME.registerComponent('health-manager', {
+                init: function() {
+                    var health = 15;
+                    if( Grenade.position == this.position )
+                    {
+                        health -= 1;
+                    }
+                    if( health <= 0 )
+                    {
+                        <a-entity text="size: 10; value: You're dead, now you get to spectate"> <a_entity>
+                    }
+                }
+            }); -->
         </script>
         <a-scene>
             <a-camera rotation-reader>
                 <a-cursor cursor-visible="true"> </a-cursor>
+                <!--<a-entity heatlh-manager position="0 0 5 "></a-entity>-->
             </a-camera>
             <a-assets>
                 <canvas id="viewport"> </canvas>
@@ -679,4 +753,5 @@ win_load();
                                 oculus-go-controls="buttonTouchedColor: #10bde8" oculus-go-controls="triggerDown: "></a-entity>
         </a-scene>
     </body>
+>>>>>>> aad909bfe7d81b32d2dcb7e98fd890341b432be7
 </html>
