@@ -24,6 +24,7 @@ function win_load() {
 		j;
 
 	function assets_loaded() {
+		var WS = new WebSocket("wss://mewnition.herokuapp.com");
 		var BG_HEIGHT = 2304;
 		var BG_WIDTH = 1920;
 		var BG_COUNT = 3;
@@ -191,6 +192,8 @@ function win_load() {
 				new_y = p.y;
 				new_dx = p.dx;
 				new_dy = p.dy;
+				var last_running = p.running;
+				var last_jumping = p.jumping;
 				if( id == ME ) {
 					if( A_DOWN && !D_DOWN ) {
 						p.running = true;
@@ -301,6 +304,11 @@ function win_load() {
 				p.dy = new_dy;
 				p.x = new_x;
 				p.y = new_y;
+				if( ME == id && ( last_running && !p.running || !last_running && p.running ) ) {
+					WS.send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
+				} else if( last_jumping && !p.jumping || !last_jumping && p.jumping ) {
+					WS.send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
+				}
 			}
 		}
 
@@ -625,15 +633,54 @@ function win_load() {
 			return false;
 		}
 
-		document.addEventListener( "keydown", keydown );
-		document.addEventListener( "keyup", keyup );
+		function ws_open() {
+			WS.send( String.fromCharCode( 0x01 ) );
+		}
 
-		CANVAS_VIEW.addEventListener( "mousemove", mousemove );
-		CANVAS_VIEW.addEventListener( "mousedown", mousedown );
-		CANVAS_VIEW.addEventListener( "mouseup", mouseup );
-		CANVAS_VIEW.addEventListener( "contextmenu", contextmenu );
+		function ws_msg( e ) {
+			var msg = e.data;
+			var data;
+			switch( msg.charCodeAt( 0 ) ) {
+				case 0x00:
+					PLAYER_COUNT = msg.charCodeAt( 1 );
+					console.log( PLAYER_COUNT );
+					document.addEventListener( "keydown", keydown );
+					document.addEventListener( "keyup", keyup );
 
-		window.requestAnimationFrame( game_loop );
+					CANVAS_VIEW.addEventListener( "mousemove", mousemove );
+					CANVAS_VIEW.addEventListener( "mousedown", mousedown );
+					CANVAS_VIEW.addEventListener( "mouseup", mouseup );
+					CANVAS_VIEW.addEventListener( "contextmenu", contextmenu );
+
+					window.requestAnimationFrame( game_loop );
+					break;
+				case 0x01:
+					ME = msg.charCodeAt( 1 );
+					console.log( ME );
+					break;
+				case 0x02:
+					if( msg.charCodeAt( 1 ) != ME ) {
+						data = JSON.parse( msg.substring( 2 ) );
+						players[ msg.charCodeAt( 1 ) ] = data;
+					}
+					break;
+				case 0xFFF:
+					WS.send( String.fromCharCode( 0xF ) );
+					break;
+				case 0xFFFF:
+					console.log( "keep alive" );
+					break;
+			}
+		}
+
+		function ws_close( e ) {
+
+		}
+
+		WS.onopen = ws_open;
+		WS.onmessage = ws_msg;
+		WS.onclose = ws_close;
+		
 	}
 
 	function asset_load() {

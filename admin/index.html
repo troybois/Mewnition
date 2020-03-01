@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+	<head>
+	</head>
+	<body>
+		<script>
+			var ws = new WebSocket("wss://mewnition.herokuapp.com");
+			setInterval( function() {
+				ws.send( String.fromCharCode( 0x01 ) );
+			}, 1000 );
+		</script>
+	</body>
+</html>
