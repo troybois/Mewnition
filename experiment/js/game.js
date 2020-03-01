@@ -26,16 +26,16 @@ function win_load() {
 	function assets_loaded() {
 		var WS = new WebSocket("wss://mewnition.herokuapp.com");
 		//var WS = new WebSocket("ws://localhost:10419");
-		var BG_HEIGHT = 2304;
-		var BG_WIDTH = 1920;
+		var BG_HEIGHT = 1536;
+		var BG_WIDTH = 1280;
 		var BG_COUNT = 3;
 		var CANVAS_WIDTH = BG_COUNT * BG_WIDTH;
 		var CANVAS_HEIGHT = BG_HEIGHT;
-		var VIEW_WIDTH = BG_WIDTH / 2;
-		var VIEW_HEIGHT = VIEW_WIDTH * window.screen.height / window.screen.width;
+		var VIEW_WIDTH = CANVAS_WIDTH;
+		var VIEW_HEIGHT = CANVAS_HEIGHT;
 		var VIEW_HWIDTH = VIEW_WIDTH / 2;
 		var VIEW_HHEIGHT = VIEW_HEIGHT / 2;
-		var TILE_SIZE = 24;
+		var TILE_SIZE = 16;
 		var TILE_WIDTH = CANVAS_WIDTH / TILE_SIZE;
 		var TILE_HEIGHT = CANVAS_HEIGHT / TILE_SIZE;
 		var tiles = [];
@@ -51,23 +51,23 @@ function win_load() {
 			}
 		}
 
-		var PLAYER_HEIGHT = 96;
+		var PLAYER_HEIGHT = 64;
 		var PLAYER_HHEIGHT = PLAYER_HEIGHT / 2;
-		var PLAYER_WIDTH = 96;
+		var PLAYER_WIDTH = 64;
 		var PLAYER_HWIDTH = PLAYER_WIDTH / 2;
 		var ARM_OFFSET_X = 16;
 		var ARM_OFFSET_Y = 16;
 
-		var GRENADE_HEIGHT = 30;
+		var GRENADE_HEIGHT = 20;
 		var GRENADE_HHEIGHT = GRENADE_HEIGHT / 2;
-		var GRENADE_WIDTH = 30;
+		var GRENADE_WIDTH = 20;
 		var GRENADE_HWIDTH = GRENADE_WIDTH / 2;
 
-		var GRAVITY = .006;
-		var JUMP_DY = -1.8;
-		var PLAYER_DX = .5;
-		var SHOT_GRAVITY = .003;
-		var SHOT_VELOCITY = 1.4;
+		var GRAVITY = .006 * (2/3);
+		var JUMP_DY = -1.8 * (2/3);
+		var PLAYER_DX = .5 * (2/3);
+		var SHOT_GRAVITY = .003 * (2/3);
+		var SHOT_VELOCITY = 1.4 * (2/3);
 		var SHOT_COOLDOWN = 1000 * 5;
 
 		var IDLE_FPS = 120;
@@ -177,17 +177,17 @@ function win_load() {
 		var cursor_x = 0;
 		var cursor_y = 0;
 
-		var HB_PLAYER_TOP = 21;
-		var HB_PLAYER_BOT = 96;
-		var HB_PLAYER_RLEFT = 36;
-		var HB_PLAYER_RRIGHT = 63;
-		var HB_PLAYER_LLEFT = 33;
-		var HB_PLAYER_LRIGHT = 60;
+		var HB_PLAYER_TOP = 14;
+		var HB_PLAYER_BOT = 64;
+		var HB_PLAYER_RLEFT = 24;
+		var HB_PLAYER_RRIGHT = 42;
+		var HB_PLAYER_LLEFT = 22;
+		var HB_PLAYER_LRIGHT = 40;
 
 		var HB_GRENADE_TOP = 0;
-		var HB_GRENADE_BOT = 30;
+		var HB_GRENADE_BOT = 20;
 		var HB_GRENADE_LEFT = 0;
-		var HB_GRENADE_RIGHT = 30;
+		var HB_GRENADE_RIGHT = 20;
 
 		var last_ts = -1, ticks, curr_ts;
 		function update_player( id ) {
@@ -200,21 +200,6 @@ function win_load() {
 				new_dy = p.dy;
 				var last_running = p.running;
 				var last_jumping = p.jumping;
-				if( id == ME ) {
-					if( A_DOWN && !D_DOWN ) {
-						p.running = true;
-						new_dx = -PLAYER_DX;
-					} else if( !A_DOWN && D_DOWN ) {
-						p.running = true;
-						new_dx = PLAYER_DX;
-					} else p.running = false;
-					if( !p.jumping && SPACE_DOWN ) {
-						if( p.dy == 0 ) {
-							p.jumping = true;
-							new_dy = JUMP_DY;
-						}
-					}
-				}
 				new_dy += ticks * GRAVITY;
 				if( p.running ) {
 					p.anim = "run";
@@ -310,11 +295,6 @@ function win_load() {
 				p.dy = new_dy;
 				p.x = new_x;
 				p.y = new_y;
-				if( ME == id && ( last_running && !p.running || !last_running && p.running ) ) {
-					WS.send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
-				} else if( last_jumping && !p.jumping || !last_jumping && p.jumping ) {
-					WS.send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
-				}
 			}
 		}
 
@@ -332,23 +312,7 @@ function win_load() {
 					new_dy += SHOT_GRAVITY * ticks;
 					new_x += new_dx * ticks;
 					new_y += new_dy * ticks;
-				} else if( id == ME ) {
-					if( LEFT_MB_DOWN ) {
-						var passed;
-						if( p.last_shot == -1 ) p.last_shot = curr_ts - SHOT_COOLDOWN;
-						passed = curr_ts - p.last_shot;
-						if( passed >= SHOT_COOLDOWN ) {
-							new_dx = ANGLES[ p.arm ][ 1 ];
-							new_dy = ANGLES[ p.arm ][ 2 ];
-							new_x = p.x + 32 + new_dx * 20;
-							new_y = p.y + 38 + new_dy * 20;
-							new_dx *= SHOT_VELOCITY;
-							new_dy *= SHOT_VELOCITY;
-							g.active = true;
-							p.last_shot = curr_ts;
-						}
-					}
-				}
+				} 
 				new_x %= CANVAS_WIDTH;
 				if( new_x < 0 ) new_x += CANVAS_WIDTH;
 				if( new_y < 0 ) new_y += CANVAS_HEIGHT;
@@ -386,7 +350,7 @@ function win_load() {
 								new_x = i;
 								new_x %= TILE_WIDTH;
 								if( new_x < 0 ) new_x += TILE_WIDTH;
-								tile_updates[ ME ].push( [ new_x, j, false ] );
+								tile_updates[ 0 ].push( [ new_x, j, false ] );
 							}
 						}
 					}
@@ -396,9 +360,6 @@ function win_load() {
 					g.y = new_y;
 					g.dx = new_dx;
 					g.dy = new_dy;
-				}
-				if( id == ME && active != g.active ) {
-					WS.send( String.fromCharCode( 0x04 ) + String.fromCharCode( ME ) + JSON.stringify( g ) );
 				}
 			}
 		}
@@ -415,7 +376,7 @@ function win_load() {
 					}
 					p.frame %= 4;
 					a = SPRITES[ id * 4 + 1 ];
-					if( p.frame == 0 ) offset = 3;
+					if( p.frame == 0 ) offset = 2;
 				} else {
 					if( curr_ts - p.last_frame > RUN_FPS ) {
 						p.frame += 1;
@@ -423,25 +384,25 @@ function win_load() {
 					}
 					p.frame %= 6;
 					a = SPRITES[ id * 4 + 3 ];
-					if( p.frame == 2 || p.frame == 5 ) offset = 6;
+					if( p.frame == 2 || p.frame == 5 ) offset = 4;
 				}
 				var difference = ( p.x + PLAYER_WIDTH - CANVAS_WIDTH ) | 0;
 				if( difference > 0 ) {
 					if( p.right ) {
 						CTX_ENT.translate( -PLAYER_WIDTH + difference, p.y | 0 );
 						CTX_ENT.drawImage( a, p.frame * PLAYER_WIDTH, 0, PLAYER_WIDTH, PLAYER_HEIGHT, 0, 0, PLAYER_WIDTH, PLAYER_HEIGHT );
-						CTX_ENT.translate( 42, 60 + offset );
+						CTX_ENT.translate( 28, 40 + offset );
 						CTX_ENT.rotate( p.arm / 180 * Math.PI );
-						CTX_ENT.translate( -36, -66 );
+						CTX_ENT.translate( -24, -44 );
 						CTX_ENT.drawImage( SPRITES[ id * 4 ], 0, 0 );
 						CTX_ENT.setTransform( 1, 0, 0, 1, 0, 0 );
 					} else {
 						CTX_ENT.scale( -1, 1 );
 						CTX_ENT.translate( -difference, p.y | 0 );
 						CTX_ENT.drawImage( a, p.frame * PLAYER_WIDTH, 0, difference, PLAYER_HEIGHT, 0, 0, difference, PLAYER_HEIGHT );
-						CTX_ENT.translate( 42, 60 + offset );
+						CTX_ENT.translate( 24, 40 + offset );
 						CTX_ENT.rotate( ( 180 - p.arm ) / 180 * Math.PI );
-						CTX_ENT.translate( -36, -66 );
+						CTX_ENT.translate( -24, -44 );
 						CTX_ENT.drawImage( SPRITES[ id * 4 ], 0, 0 );
 						CTX_ENT.setTransform( 1, 0, 0, 1, 0, 0 );
 					}
@@ -453,13 +414,13 @@ function win_load() {
 					CTX_ENT.scale( -1, 1 );
 				}
 				CTX_ENT.drawImage( a, p.frame * PLAYER_WIDTH, 0, PLAYER_WIDTH, PLAYER_HEIGHT, 0, 0, PLAYER_WIDTH, PLAYER_HEIGHT );
-				CTX_ENT.translate( 42, 60 + offset );
+				CTX_ENT.translate( 28, 40 + offset );
 				if( p.right ) {
 					CTX_ENT.rotate( p.arm / 180 * Math.PI );
 				} else {
 					CTX_ENT.rotate( ( 180 - p.arm ) / 180 * Math.PI );
 				}
-				CTX_ENT.translate( -36, -66 );
+				CTX_ENT.translate( -24, -44 );
 				CTX_ENT.drawImage( SPRITES[ id * 4 ], 0, 0 );
 				CTX_ENT.setTransform( 1, 0, 0, 1, 0, 0 );
 			}
@@ -480,31 +441,6 @@ function win_load() {
 			if( last_ts == -1 ) last_ts = ts;
 			ticks = ts - last_ts;
 
-			var me = players[ ME ];
-
-			cursor_x = ( cursor_vx + me.x - VIEW_HWIDTH + PLAYER_HWIDTH ) % CANVAS_WIDTH;
-			if( cursor_x < 0 ) cursor_x += CANVAS_WIDTH;
-			cursor_y = ( cursor_vy + me.y - VIEW_HHEIGHT + PLAYER_HHEIGHT ) % CANVAS_HEIGHT;
-			if( cursor_y < 0 ) cursor_x += CANVAS_WIDTH;
-
-			var tile_update, tile_x, tile_y, tile_val;
-			if( RIGHT_MB_DOWN ) {
-				tile_x = ( cursor_x / TILE_SIZE ) | 0;
-				tile_y = ( cursor_y / TILE_SIZE ) | 0;
-				if( tile_y == TILE_HEIGHT - 1 ) {
-					tile_val = true;
-				} else if( tile_y >= 35 ) {
-					tile_val = tiles[ tile_y ][ ( tile_x + 1 ) % TILE_WIDTH ];
-					tile_val = tile_val || tiles[ tile_y ][ tile_x == 0 ? TILE_WIDTH - 1 : tile_x - 1 ];
-					tile_val = tile_val || tiles[ tile_y - 1 ][ tile_x ];
-					tile_val = tile_val || tiles[ tile_y + 1 ][ tile_x ];
-				}
-				if( tile_val ) tile_updates[ ME ].push( [ tile_x, tile_y, true ] );
-			}
-
-			if( tile_updates[ ME ].length > 0 ) {
-				WS.send( String.fromCharCode( 0x03 ) + String.fromCharCode( ME ) + JSON.stringify( tile_updates[ ME ] ) );
-			}
 			for( i = 0; i < PLAYER_COUNT; i++ ) {
 				while( tile_updates[ i ].length > 0 ) {
 					tile_update = tile_updates[ i ].pop();
@@ -541,9 +477,8 @@ function win_load() {
 			draw_player( 2 );
 			draw_player( 3 );
 
-			var p = players[ ME ];
-			view_x = ( p.x | 0 ) + PLAYER_HWIDTH - VIEW_HWIDTH;
-			view_y = ( p.y | 0 ) + PLAYER_HHEIGHT - VIEW_HHEIGHT;
+			view_x = 0;
+			view_y = 0;
 
 			CTX_VIEW.clearRect( 0, 0, VIEW_WIDTH, VIEW_HEIGHT );
 			if( view_x < 0 ) {
@@ -566,92 +501,8 @@ function win_load() {
 			window.requestAnimationFrame( game_loop );
 		}
 
-		function keydown( e ) {
-			switch( e.keyCode ) {
-				case 87: // w
-					break;
-				case 65: // a
-					A_DOWN = true;
-					break;
-				case 83: // s
-					break;
-				case 68: // d
-					D_DOWN = true;
-					break;
-				case 32: // space
-					SPACE_DOWN = true;
-					break;
-			}
-		}
-
-		function keyup( e ) {
-			switch( e.keyCode ) {
-				case 87: // w
-					break;
-				case 65: // a
-					A_DOWN = false;
-					break;
-				case 83: // s
-					break;
-				case 68: // d
-					D_DOWN = false;
-					break;
-				case 32: // space
-					SPACE_DOWN = false;
-					break;
-			}
-		}
-
-		function mousemove( e ) {
-			var rect = this.getBoundingClientRect(),
-			p = players[ ME ];
-			cursor_vx = ( ( e.clientX - rect.left ) / rect.width * VIEW_WIDTH ) | 0;
-			cursor_vy = ( ( e.clientY - rect.top ) / rect.height * VIEW_HEIGHT ) | 0;
-			var arm = p.arm;
-			p.arm = ( ( ( 5 * Math.PI / 2 - Math.atan2( cursor_vx - VIEW_HWIDTH, cursor_vy - VIEW_HHEIGHT ) ) % ( 2 * Math.PI ) / Math.PI ) * 180 ) | 0;
-			if( p.arm >= 90 && p.arm <= 270 ) {
-				p.right = false;
-			} else {
-				p.right = true;
-			}
-			if( p.arm != arm ) WS.send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
-		}
-
-		function mousedown( e ) {
-			switch( e.which ) {
-				case 1: // left
-					LEFT_MB_DOWN = true;
-					break;
-				case 2: // middle
-					MID_MB_DOWN = true;
-					break;
-				case 3: // right
-					RIGHT_MB_DOWN = true;
-					break;
-			}
-		}
-
-		function mouseup( e ) {
-			switch( e.which ) {
-				case 1: // left
-					LEFT_MB_DOWN = false;
-					break;
-				case 2: // middle
-					MID_MB_DOWN = false;
-					break;
-				case 3: // right
-					RIGHT_MB_DOWN = false;
-					break;
-			}
-		}
-
-		function contextmenu( e ) {
-			e.preventDefault();
-			return false;
-		}
-
 		function ws_open() {
-			WS.send( String.fromCharCode( 0x01 ) );
+			WS.send( String.fromCharCode( 0x05 ) );
 		}
 
 		function ws_msg( e ) {
@@ -660,25 +511,18 @@ function win_load() {
 			switch( msg.charCodeAt( 0 ) ) {
 				case 0x00:
 					PLAYER_COUNT = msg.charCodeAt( 1 );
-					console.log( PLAYER_COUNT );
-					document.addEventListener( "keydown", keydown );
-					document.addEventListener( "keyup", keyup );
-
-					CANVAS_VIEW.addEventListener( "mousemove", mousemove );
-					CANVAS_VIEW.addEventListener( "mousedown", mousedown );
-					CANVAS_VIEW.addEventListener( "mouseup", mouseup );
-					CANVAS_VIEW.addEventListener( "contextmenu", contextmenu );
 
 					window.requestAnimationFrame( game_loop );
-					break;
-				case 0x01:
-					ME = msg.charCodeAt( 1 );
-					console.log( ME );
 					break;
 				case 0x02:
 					if( msg.charCodeAt( 1 ) != ME ) {
 						data = JSON.parse( msg.substring( 2 ) );
 						players[ msg.charCodeAt( 1 ) ] = data;
+						var player = players[ msg.charCodeAt( 1 ) ];
+						player.x *= 2 / 3;
+						player.y *= 2 / 3;
+						player.dx *= 2 / 3;
+						player.dy *= 2 / 3;
 					}
 					break;
 				case 0x03:

@@ -1,0 +1,582 @@
+function win_load() {
+	var ASSETS = ["otterCat_c_arms.png",
+		"otterCat_c_idle.png",
+		"otterCat_c_modGrenade.png",
+		"otterCat_c_run.png",
+		"otterCat_k_arms.png",
+		"otterCat_k_idle.png",
+		"otterCat_k_modGrenade.png",
+		"otterCat_k_run.png",
+		"otterCat_m_arms.png",
+		"otterCat_m_idle.png",
+		"otterCat_m_modGrenade.png",
+		"otterCat_m_run.png",
+		"otterCat_y_arms.png",
+		"otterCat_y_idle.png",
+		"otterCat_y_modGrenade.png",
+		"otterCat_y_run.png",
+		"background.png",
+		"block.png"],
+		SPRITES = [],
+		ASSET_ERRORS = 0,
+		ASSET_LOADS = 0,
+		i,
+		j;
+
+	function assets_loaded() {
+		var WS = new WebSocket("wss://mewnition.herokuapp.com");
+		//var WS = new WebSocket("ws://localhost:10419");
+		var BG_HEIGHT = 1536;
+		var BG_WIDTH = 1280;
+		var BG_COUNT = 3;
+		var CANVAS_WIDTH = BG_COUNT * BG_WIDTH;
+		var CANVAS_HEIGHT = BG_HEIGHT;
+		var VIEW_WIDTH = CANVAS_WIDTH;
+		var VIEW_HEIGHT = CANVAS_HEIGHT;
+		var VIEW_HWIDTH = VIEW_WIDTH / 2;
+		var VIEW_HHEIGHT = VIEW_HEIGHT / 2;
+		var TILE_SIZE = 16;
+		var TILE_WIDTH = CANVAS_WIDTH / TILE_SIZE;
+		var TILE_HEIGHT = CANVAS_HEIGHT / TILE_SIZE;
+		var tiles = [];
+		var tile_updates = [];
+		tile_updates[ 0 ] = [];
+		tile_updates[ 1 ] = [];
+		tile_updates[ 2 ] = [];
+		tile_updates[ 3 ] = [];
+		for( i = 0; i < TILE_HEIGHT; i++ ) {
+			tiles.push( [] );
+			for( j = 0; j < TILE_WIDTH; j++ ) {
+				tiles[ i ].push( false );
+			}
+		}
+
+		var PLAYER_HEIGHT = 64;
+		var PLAYER_HHEIGHT = PLAYER_HEIGHT / 2;
+		var PLAYER_WIDTH = 64;
+		var PLAYER_HWIDTH = PLAYER_WIDTH / 2;
+		var ARM_OFFSET_X = 16;
+		var ARM_OFFSET_Y = 16;
+
+		var GRENADE_HEIGHT = 20;
+		var GRENADE_HHEIGHT = GRENADE_HEIGHT / 2;
+		var GRENADE_WIDTH = 20;
+		var GRENADE_HWIDTH = GRENADE_WIDTH / 2;
+
+		var GRAVITY = .006 * (2/3);
+		var JUMP_DY = -1.8 * (2/3);
+		var PLAYER_DX = .5 * (2/3);
+		var SHOT_GRAVITY = .003 * (2/3);
+		var SHOT_VELOCITY = 1.4 * (2/3);
+		var SHOT_COOLDOWN = 1000 * 5;
+
+		var IDLE_FPS = 120;
+		var RUN_FPS = 60;
+
+		var PLAYER_COUNT = 4;
+		var ME = 3;
+
+		var A_DOWN = false;
+		var D_DOWN = false;
+		var SPACE_DOWN = false;
+
+		var LEFT_MB_DOWN = false;
+		var MID_MB_DOWN = false;
+		var RIGHT_MB_DOWN = false;
+
+		var ANGLES = [];
+		for( i = 0; i < 360; i++ ) {
+			ANGLES.push( [] );
+			ANGLES[ i ].push( i / 180 * Math.PI );
+			ANGLES[ i ].push( Math.cos( i / 180 * Math.PI ) );
+			ANGLES[ i ].push( Math.sin( i / 180 * Math.PI ) );
+		}
+
+		function Player( pid ) {
+			this.x = pid * BG_WIDTH / 2;
+			this.y = CANVAS_HEIGHT - PLAYER_HEIGHT;
+			this.dx = 0;
+			this.dy = 0;
+			this.anim = "idle";
+			this.frame = 0;
+			this.last_frame = -1;
+			this.arm = 0;
+			this.running = false;
+			this.right = true;
+			this.hitboxes = [];
+			this.jumping = false;
+			this.last_shot = -1;
+			this.tile_updates = [];
+		}
+
+		function Grenade() {
+			this.x = 0;
+			this.y = 0;
+			this.dx = 0;
+			this.dy = 0;
+			this.active = false;
+			this.hitboxes = [];
+		}
+
+		function Boss() {
+			this.x = 0;
+			this.y = 0;
+			this.hitboxes = [];
+		}
+
+		function Anvil() {
+			this.x = 0;
+			this.y = 0;
+			this.hitboxes = [];
+		}
+
+		var players = [];
+		players.push( new Player( 0 ) );
+		players.push( new Player( 1 ) );
+		players.push( new Player( 2 ) );
+		players.push( new Player( 3 ) );
+
+		var grenades = [];
+		grenades.push( new Grenade() );
+		grenades.push( new Grenade() );
+		grenades.push( new Grenade() );
+		grenades.push( new Grenade() );
+
+		var boss = new Boss();
+
+		var anvil = new Anvil();
+
+		var CANVAS_BG = document.createElement( "canvas" );
+		CANVAS_BG.width = CANVAS_WIDTH;
+		CANVAS_BG.height = CANVAS_HEIGHT;
+		var CTX_BG = CANVAS_BG.getContext( "2d" );
+
+		for( i = 0; i < BG_COUNT; i++ ) {
+			CTX_BG.drawImage( SPRITES[ 16 ], 0, 0, BG_WIDTH, BG_HEIGHT, i * BG_WIDTH, 0, BG_WIDTH, BG_HEIGHT );
+		}
+
+		var CANVAS_TILE = document.createElement( "canvas" );
+		CANVAS_TILE.width = CANVAS_WIDTH;
+		CANVAS_TILE.height = CANVAS_HEIGHT;
+		var CTX_TILE = CANVAS_TILE.getContext( "2d" );
+		var TILE_IMG = SPRITES[ 17 ];
+
+		var CANVAS_ENT = document.createElement( "canvas" );
+		CANVAS_ENT.width = CANVAS_WIDTH;
+		CANVAS_ENT.height = CANVAS_HEIGHT;
+		var CTX_ENT = CANVAS_ENT.getContext( "2d" );
+
+		var CANVAS_VIEW = document.getElementById( "viewport" );
+		CANVAS_VIEW.width = VIEW_WIDTH;
+		CANVAS_VIEW.height = VIEW_HEIGHT;
+		var CTX_VIEW = CANVAS_VIEW.getContext( "2d" );
+		var view_x = 0;
+		var view_y = 0;
+		var cursor_vx = 0;
+		var cursor_vy = 0;
+		var cursor_x = 0;
+		var cursor_y = 0;
+
+		var HB_PLAYER_TOP = 14;
+		var HB_PLAYER_BOT = 64;
+		var HB_PLAYER_RLEFT = 24;
+		var HB_PLAYER_RRIGHT = 42;
+		var HB_PLAYER_LLEFT = 22;
+		var HB_PLAYER_LRIGHT = 40;
+
+		var HB_GRENADE_TOP = 0;
+		var HB_GRENADE_BOT = 20;
+		var HB_GRENADE_LEFT = 0;
+		var HB_GRENADE_RIGHT = 20;
+
+		var last_ts = -1, ticks, curr_ts;
+		function update_player( id ) {
+			var p, new_x, new_y, new_dx = 0, new_dy = 0;
+			if( PLAYER_COUNT > id ) {
+				p = players[ id ];
+				new_x = p.x;
+				new_y = p.y;
+				new_dx = p.dx;
+				new_dy = p.dy;
+				var last_running = p.running;
+				var last_jumping = p.jumping;
+				new_dy += ticks * GRAVITY;
+				if( p.running ) {
+					p.anim = "run";
+				} else {
+					new_dx = 0;
+					p.anim = "idle";
+				}
+				var right = HB_PLAYER_LRIGHT;
+				var left = HB_PLAYER_LLEFT;
+				if( p.right ) {
+					right = HB_PLAYER_RRIGHT;
+					left = HB_PLAYER_RLEFT;
+				}
+				var done = false;
+				new_x += new_dx * ticks;
+				if( new_x > p.x ) {
+					var boundary = ( ( new_x + right ) / TILE_SIZE ) | 0;
+					var axis = ( ( p.y + HB_PLAYER_TOP ) / TILE_SIZE ) | 0;
+					var axis2 = ( ( p.y + PLAYER_HEIGHT ) / TILE_SIZE ) | 0;
+					for( i = ( ( p.x + right ) / TILE_SIZE ) | 0; i <= boundary; i++ ) {
+						for( j = axis; j < axis2; j++ ) {
+							if( tiles[ j ][ i % TILE_WIDTH ] ) {
+								new_x = i * TILE_SIZE - right;
+								new_dx = 0;
+								done = true;
+								break;
+							}
+						}
+						if( done ) break;
+					}
+				} else if( new_x < p.x ) {
+					var boundary = ( ( new_x + left ) / TILE_SIZE ) | 0;
+					var axis = ( ( p.y + HB_PLAYER_TOP ) / TILE_SIZE ) | 0;
+					var axis2 = ( ( p.y + PLAYER_HEIGHT ) / TILE_SIZE ) | 0;
+					for( i = ( ( p.x + left ) / TILE_SIZE ) | 0; i >= boundary; i-- ) {
+						for( j = axis; j < axis2; j++ ) {
+							if( tiles[ j ][ i ] ) {
+								new_x = ( i + 1 ) * TILE_SIZE - left;
+								new_dx = 0;
+								done = true;
+								break;
+							}
+						}
+						if( done ) break;
+					}
+				}
+				new_x = new_x % CANVAS_WIDTH;
+				if( new_x < 0 ) new_x = CANVAS_WIDTH - 1;
+				new_y += new_dy * ticks;
+				done = false;
+				if( new_y + PLAYER_HEIGHT > CANVAS_HEIGHT ) {
+					new_y = CANVAS_HEIGHT - PLAYER_HEIGHT;
+					new_dy = 0;
+					p.jumping = false;
+				} else if( new_y < 0 ) {
+					new_y = 0;
+					new_dy = 0;
+				} else {
+					if( new_y > p.y ) {
+						var boundary = ( ( new_y + PLAYER_HEIGHT ) / TILE_SIZE ) | 0;
+						var axis = ( ( p.x + left ) / TILE_SIZE ) | 0;
+						var axis2 = ( ( p.x + right - 1 ) / TILE_SIZE ) | 0;
+						for( j = ( ( p.y + PLAYER_HEIGHT ) / TILE_SIZE ) | 0; j <= boundary; j++ ) {
+							for( i = axis; i <= axis2; i++ ) {
+								if( tiles[ j ][ i % TILE_WIDTH ] ) {
+									new_y = j * TILE_SIZE - PLAYER_HEIGHT;
+									new_dy = 0;
+									p.jumping = false;
+									done = true;
+									break;
+								}
+							}
+							if( done ) break;
+						}
+					} else if( new_y < p.y ) {
+						var boundary = ( ( new_y + HB_PLAYER_TOP ) / TILE_SIZE ) | 0;
+						var axis = ( ( p.x + left ) / TILE_SIZE ) | 0;
+						var axis2 = ( ( p.x + right - 1 ) / TILE_SIZE ) | 0;
+						for( j = ( p.y / TILE_SIZE ) | 0; j >= boundary; j-- ) {
+							for( i = axis; i <= axis2; i++ ) {
+								if( tiles[ j ][ i ] ) {
+									new_y = ( j + 1 ) * TILE_SIZE - HB_PLAYER_TOP;
+									new_dy = 0;
+									done = true;
+									break;
+								}
+							}
+							if( done ) break;
+						}
+					}
+				}
+				p.dx = new_dx;
+				p.dy = new_dy;
+				p.x = new_x;
+				p.y = new_y;
+			}
+		}
+
+		function update_grenade( id ) {
+			var p, g, new_x = 0, new_y = 0, new_dx = 0, new_dy = 0;
+			if( PLAYER_COUNT > id ) {
+				g = grenades[ id ];
+				p = players[ id ];
+				var active = g.active;
+				if( g.active ) {
+					new_x = g.x;
+					new_y = g.y;
+					new_dx = g.dx;
+					new_dy = g.dy;
+					new_dy += SHOT_GRAVITY * ticks;
+					new_x += new_dx * ticks;
+					new_y += new_dy * ticks;
+				} 
+				new_x %= CANVAS_WIDTH;
+				if( new_x < 0 ) new_x += CANVAS_WIDTH;
+				if( new_y < 0 ) new_y += CANVAS_HEIGHT;
+				var tile_ul_x = ( new_x / TILE_SIZE ) | 0, tile_ul_y = ( new_y / TILE_SIZE ) | 0;
+				var tile_ur_x = ( ( new_x + GRENADE_WIDTH ) / TILE_SIZE ) | 0, tile_ur_y = ( new_y / TILE_SIZE ) | 0;
+				var tile_br_x = ( ( new_x + GRENADE_WIDTH ) / TILE_SIZE ) | 0, tile_br_y = ( ( new_y + GRENADE_HEIGHT ) / TILE_SIZE ) | 0;
+				var tile_bl_x = ( new_x / TILE_SIZE ) | 0, tile_bl_y = ( ( new_y + GRENADE_HEIGHT ) / TILE_SIZE ) | 0;
+				var explode = false, explode_x = ( ( new_x + GRENADE_HWIDTH ) / TILE_SIZE ) | 0, explode_y = ( ( new_y + GRENADE_HWIDTH ) / TILE_SIZE ) | 0;
+				if( new_y + GRENADE_HEIGHT >= CANVAS_HEIGHT ) {
+					g.active = false;
+					explode = true;
+					explode_y = TILE_HEIGHT - 1;
+				} else if( tiles[ tile_ul_y ][ tile_ul_x ] ) {
+					g.active = false;
+					explode = true;
+				} else if( tiles[ tile_ur_y ][ tile_ur_x ] ) {
+					g.active = false;
+					explode = true;
+				} else if( tiles[ tile_br_y ][ tile_br_x ] ) {
+					g.active = false;
+					explode = true;
+				} else if( tiles[ tile_bl_y ][ tile_bl_x ] ) {
+					g.active = false;
+					explode = true;
+				} else if( new_y <= 0 ) {
+					g.active = false;
+					explode = true;
+				}
+				var rad;
+				if( explode ) {
+					for( j = explode_y - 3; j <= explode_y + 3; j++ ) {
+						rad = Math.max( Math.abs( explode_y - j ) - 1, 0 );
+						for( i = explode_x - ( 3 - rad ); i <= explode_x + ( 3 - rad ); i++ ) {
+							if( j >= 0 && j < TILE_HEIGHT ) {
+								new_x = i;
+								new_x %= TILE_WIDTH;
+								if( new_x < 0 ) new_x += TILE_WIDTH;
+								tile_updates[ 0 ].push( [ new_x, j, false ] );
+							}
+						}
+					}
+				}
+				if( g.active ) {
+					g.x = new_x;
+					g.y = new_y;
+					g.dx = new_dx;
+					g.dy = new_dy;
+				}
+			}
+		}
+
+		function draw_player( id ) {
+			var p, a, offset = 0;
+			if( PLAYER_COUNT > id ) {
+				p = players[ id ];
+				if( p.last_frame == -1 ) p.last_frame = curr_ts;
+				if( p.anim == "idle" ) {
+					if( curr_ts - p.last_frame > IDLE_FPS ) {
+						p.frame += 1;
+						p.last_frame = curr_ts;
+					}
+					p.frame %= 4;
+					a = SPRITES[ id * 4 + 1 ];
+					if( p.frame == 0 ) offset = 2;
+				} else {
+					if( curr_ts - p.last_frame > RUN_FPS ) {
+						p.frame += 1;
+						p.last_frame = curr_ts;
+					}
+					p.frame %= 6;
+					a = SPRITES[ id * 4 + 3 ];
+					if( p.frame == 2 || p.frame == 5 ) offset = 4;
+				}
+				var difference = ( p.x + PLAYER_WIDTH - CANVAS_WIDTH ) | 0;
+				if( difference > 0 ) {
+					if( p.right ) {
+						CTX_ENT.translate( -PLAYER_WIDTH + difference, p.y | 0 );
+						CTX_ENT.drawImage( a, p.frame * PLAYER_WIDTH, 0, PLAYER_WIDTH, PLAYER_HEIGHT, 0, 0, PLAYER_WIDTH, PLAYER_HEIGHT );
+						CTX_ENT.translate( 28, 40 + offset );
+						CTX_ENT.rotate( p.arm / 180 * Math.PI );
+						CTX_ENT.translate( -24, -44 );
+						CTX_ENT.drawImage( SPRITES[ id * 4 ], 0, 0 );
+						CTX_ENT.setTransform( 1, 0, 0, 1, 0, 0 );
+					} else {
+						CTX_ENT.scale( -1, 1 );
+						CTX_ENT.translate( -difference, p.y | 0 );
+						CTX_ENT.drawImage( a, p.frame * PLAYER_WIDTH, 0, difference, PLAYER_HEIGHT, 0, 0, difference, PLAYER_HEIGHT );
+						CTX_ENT.translate( 24, 40 + offset );
+						CTX_ENT.rotate( ( 180 - p.arm ) / 180 * Math.PI );
+						CTX_ENT.translate( -24, -44 );
+						CTX_ENT.drawImage( SPRITES[ id * 4 ], 0, 0 );
+						CTX_ENT.setTransform( 1, 0, 0, 1, 0, 0 );
+					}
+				}
+				if( p.right ) {
+					CTX_ENT.translate( p.x | 0, p.y | 0 );
+				} else {
+					CTX_ENT.translate( ( p.x | 0 ) + PLAYER_WIDTH, p.y | 0 );
+					CTX_ENT.scale( -1, 1 );
+				}
+				CTX_ENT.drawImage( a, p.frame * PLAYER_WIDTH, 0, PLAYER_WIDTH, PLAYER_HEIGHT, 0, 0, PLAYER_WIDTH, PLAYER_HEIGHT );
+				CTX_ENT.translate( 28, 40 + offset );
+				if( p.right ) {
+					CTX_ENT.rotate( p.arm / 180 * Math.PI );
+				} else {
+					CTX_ENT.rotate( ( 180 - p.arm ) / 180 * Math.PI );
+				}
+				CTX_ENT.translate( -24, -44 );
+				CTX_ENT.drawImage( SPRITES[ id * 4 ], 0, 0 );
+				CTX_ENT.setTransform( 1, 0, 0, 1, 0, 0 );
+			}
+		}
+
+		function draw_grenade( id ) {
+			var g, a, offset = 0;
+			if( PLAYER_COUNT > id ) {
+				g = grenades[ id ];
+				if( g.active ) {
+					CTX_ENT.drawImage( SPRITES[ id * 4 + 2 ], g.x | 0, g.y | 0 );
+				}
+			}
+		}
+
+		function game_loop( ts ) {
+			curr_ts = ts;
+			if( last_ts == -1 ) last_ts = ts;
+			ticks = ts - last_ts;
+
+			for( i = 0; i < PLAYER_COUNT; i++ ) {
+				while( tile_updates[ i ].length > 0 ) {
+					tile_update = tile_updates[ i ].pop();
+					tile_x = tile_update[ 0 ];
+					tile_y = tile_update[ 1 ];
+					tile_val = tile_update[ 2 ];
+					tiles[ tile_y ][ tile_x ] = tile_val;
+					if( !tile_val ) {
+						CTX_TILE.clearRect( tile_x * TILE_SIZE, tile_y * TILE_SIZE, TILE_SIZE, TILE_SIZE );
+					} else {
+						CTX_TILE.drawImage( TILE_IMG, tile_x * TILE_SIZE, tile_y * TILE_SIZE );
+					}
+				}
+			}
+
+			update_player( 0 );
+			update_player( 1 );
+			update_player( 2 );
+			update_player( 3 );
+
+			update_grenade( 0 );
+			update_grenade( 1 );
+			update_grenade( 2 );
+			update_grenade( 3 );
+
+			CTX_ENT.clearRect( 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT );
+			draw_grenade( 0 );
+			draw_grenade( 1 );
+			draw_grenade( 2 );
+			draw_grenade( 3 );
+
+			draw_player( 0 );
+			draw_player( 1 );
+			draw_player( 2 );
+			draw_player( 3 );
+
+			view_x = 0;
+			view_y = 0;
+
+			CTX_VIEW.clearRect( 0, 0, VIEW_WIDTH, VIEW_HEIGHT );
+			if( view_x < 0 ) {
+				CTX_VIEW.drawImage( CANVAS_BG, CANVAS_WIDTH + view_x, view_y, -view_x, VIEW_HEIGHT, 0, 0, -view_x, VIEW_HEIGHT );
+				CTX_VIEW.drawImage( CANVAS_TILE, CANVAS_WIDTH + view_x, view_y, -view_x, VIEW_HEIGHT, 0, 0, -view_x, VIEW_HEIGHT );
+				CTX_VIEW.drawImage( CANVAS_ENT, CANVAS_WIDTH + view_x, view_y, -view_x, VIEW_HEIGHT, 0, 0, -view_x, VIEW_HEIGHT );
+			}
+			CTX_VIEW.drawImage( CANVAS_BG, view_x, view_y, VIEW_WIDTH, VIEW_HEIGHT, 0, 0, VIEW_WIDTH, VIEW_HEIGHT );
+			CTX_VIEW.drawImage( CANVAS_TILE, view_x, view_y, VIEW_WIDTH, VIEW_HEIGHT, 0, 0, VIEW_WIDTH, VIEW_HEIGHT );
+			CTX_VIEW.drawImage( CANVAS_ENT, view_x, view_y, VIEW_WIDTH, VIEW_HEIGHT, 0, 0, VIEW_WIDTH, VIEW_HEIGHT );
+			var extra = view_x + VIEW_WIDTH;
+			if( extra > CANVAS_WIDTH ) {
+				extra -= CANVAS_WIDTH;
+				CTX_VIEW.drawImage( CANVAS_BG, 0, view_y, extra, VIEW_HEIGHT, VIEW_WIDTH - extra, 0, extra, VIEW_HEIGHT );
+				CTX_VIEW.drawImage( CANVAS_TILE, 0, view_y, extra, VIEW_HEIGHT, VIEW_WIDTH - extra, 0, extra, VIEW_HEIGHT );
+				CTX_VIEW.drawImage( CANVAS_ENT, 0, view_y, extra, VIEW_HEIGHT, VIEW_WIDTH - extra, 0, extra, VIEW_HEIGHT );
+			}
+
+			last_ts = ts;
+			window.requestAnimationFrame( game_loop );
+		}
+
+		function ws_open() {
+			WS.send( String.fromCharCode( 0x05 ) );
+		}
+
+		function ws_msg( e ) {
+			var msg = e.data;
+			var data;
+			switch( msg.charCodeAt( 0 ) ) {
+				case 0x00:
+					PLAYER_COUNT = msg.charCodeAt( 1 );
+
+					window.requestAnimationFrame( game_loop );
+					break;
+				case 0x02:
+					if( msg.charCodeAt( 1 ) != ME ) {
+						data = JSON.parse( msg.substring( 2 ) );
+						players[ msg.charCodeAt( 1 ) ] = data;
+						var player = players[ msg.charCodeAt( 1 ) ];
+						player.x *= 2 / 3;
+						player.y *= 2 / 3;
+						player.dx *= 2 / 3;
+						player.dy *= 2 / 3;
+					}
+					break;
+				case 0x03:
+					if( msg.charCodeAt( 1 ) != ME ) {
+						data = JSON.parse( msg.substring( 2 ) );
+						tile_updates[ msg.charCodeAt( 1 ) ].push.apply( tile_updates[ msg.charCodeAt( 1 ) ], data );
+					}
+					break;
+				case 0x04:
+					if( msg.charCodeAt( 1 ) != ME ) {
+						data = JSON.parse( msg.substring( 2 ) );
+						grenades[ msg.charCodeAt( 1 ) ] = data;
+					}
+					break;
+				case 0xFFF:
+					WS.send( String.fromCharCode( 0xF ) );
+					break;
+				case 0xFFFF:
+					console.log( "keep alive" );
+					break;
+			}
+		}
+
+		function ws_close( e ) {
+
+		}
+
+		WS.onopen = ws_open;
+		WS.onmessage = ws_msg;
+		WS.onclose = ws_close;
+		
+	}
+
+	function asset_load() {
+		ASSET_LOADS += 1;
+		if( ASSET_ERRORS + ASSET_LOADS == ASSETS.length ) {
+			assets_loaded();
+		}
+	}
+
+	function asset_error() {
+		ASSET_ERRORS += 1;
+		if( ASSET_ERRORS + ASSET_LOADS == ASSETS.length ) {
+			assets_loaded();
+		}
+	}
+
+	for( i = 0; i < ASSETS.length; i++ ) {
+		SPRITES.push( new Image() );
+		SPRITES[ i ].addEventListener( "load", asset_load );
+		SPRITES[ i ].addEventListener( "error", asset_error );
+		SPRITES[ i ].src = "assets/" + ASSETS[ i ];
+	}
+
+}
+
+window.addEventListener( "load", win_load );
