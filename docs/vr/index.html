@@ -164,6 +164,10 @@
         function Boss() {
             this.x = 0;
             this.y = 0;
+            this.target_x = 0;
+            this.target_y = 0;
+            this.dx = 0;
+            this.dy = 0;
             this.hitboxes = [];
         }
 
@@ -407,6 +411,18 @@
             }
         }
 
+        function update_boss() {
+            window.rotations.y += Math.PI;
+            window.rotations.y %= Math.PI * 2;
+            while( window.rotations.y < 0 ) window.rotations.y += Math.PI * 2;
+            boss.target_x = rotations.y / 2 / Math.PI * CANVAS_WIDTH;
+            boss.target_y = 3.25 + window.height + Math.tan( window.rotations.x ) * 3.05;
+            if( boss.target_y > 7.00 ) boss.target_y = 7.00;
+            if( boss.target_y < 0 ) boss.target_y = 0;
+            boss.target_y = 7 - boss.target_y;
+            boss.target_y = ( boss.target_y / 7 ) * CANVAS_HEIGHT;
+        }
+
         function draw_player( id ) {
             var p, a, offset = 0;
             if( PLAYER_COUNT > id ) {
@@ -499,6 +515,8 @@
                 }
             }
 
+            update_boss();
+
             update_player( 0 );
             update_player( 1 );
             update_player( 2 );
@@ -523,18 +541,6 @@
             view_x = 0;
             view_y = 0;
 
-            // BASIC
-            window.rotations.y += Math.PI;
-            window.rotations.y %= Math.PI * 2;
-            while( window.rotations.y < 0 ) window.rotations.y += Math.PI * 2;
-            // /window.rotations.y = 2 * Math.PI - window.rotations.y;
-            var xx = rotations.y / 2 / Math.PI * CANVAS_WIDTH;
-            var yy = 3.25 + window.height + Math.tan( window.rotations.x ) * 3.05;
-            if( yy > 7.00 ) yy = 7.00;
-            if( yy < 0 ) yy = 0;
-            yy = 7 - yy;
-            yy = ( yy / 7 ) * CANVAS_HEIGHT;
-
             CTX_VIEW.clearRect( 0, 0, VIEW_WIDTH, VIEW_HEIGHT );
             if( view_x < 0 ) {
                 CTX_VIEW.drawImage( CANVAS_BG, CANVAS_WIDTH + view_x, view_y, -view_x, VIEW_HEIGHT, 0, 0, -view_x, VIEW_HEIGHT );
@@ -551,9 +557,6 @@
                 CTX_VIEW.drawImage( CANVAS_TILE, 0, view_y, extra, VIEW_HEIGHT, VIEW_WIDTH - extra, 0, extra, VIEW_HEIGHT );
                 CTX_VIEW.drawImage( CANVAS_ENT, 0, view_y, extra, VIEW_HEIGHT, VIEW_WIDTH - extra, 0, extra, VIEW_HEIGHT );
             }
-            CTX_VIEW.translate( -32, 32 );
-            CTX_VIEW.clearRect( xx, yy, 64, 64 );
-            CTX_VIEW.setTransform(1,0,0,1,0,0);
             last_ts = ts;
         }
 
@@ -590,6 +593,11 @@
                     if( msg.charCodeAt( 1 ) != ME ) {
                         data = JSON.parse( msg.substring( 2 ) );
                         grenades[ msg.charCodeAt( 1 ) ] = data;
+                        var grenade = grenades[ msg.charCodeAt( 1 ) ];
+                        grenade.x *= 2 / 3;
+                        grenade.y *= 2 / 3;
+                        grenade.dx *= 2 / 3;
+                        grenade.dy *= 2 / 3;
                     }
                     break;
                 case 0xFFF:
