@@ -514,9 +514,9 @@ function win_load() {
 					}
 					var rad;
 					if( explode ) {
-						for( j = explode_y - 3; j <= explode_y + 3; j++ ) {
+						for( j = explode_y - 4; j <= explode_y + 4; j++ ) {
 							rad = Math.max( Math.abs( explode_y - j ) - 1, 0 );
-							for( i = explode_x - ( 3 - rad ); i <= explode_x + ( 3 - rad ); i++ ) {
+							for( i = explode_x - ( 4 - rad ); i <= explode_x + ( 4 - rad ); i++ ) {
 								if( j >= 0 && j < TILE_HEIGHT ) {
 									new_x = i;
 									new_x %= TILE_WIDTH;
