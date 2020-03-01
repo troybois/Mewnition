@@ -26,8 +26,8 @@ function win_load() {
 		j;
 
 	function assets_loaded() {
-		//var WS = new WebSocket("wss://mewnition.herokuapp.com");
-		var WS = new WebSocket("ws://localhost:10419");
+		var WS = new WebSocket("wss://mewnition.herokuapp.com");
+		//var WS = new WebSocket("ws://localhost:10419");
 		var BG_HEIGHT = 2304;
 		var BG_WIDTH = 1920;
 		var BG_COUNT = 3;
