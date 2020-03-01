@@ -326,7 +326,6 @@ function win_load() {
 				p.dy = new_dy;
 				p.x = new_x;
 				p.y = new_y;
-				if( p.right )
 				if( ME == id && ( last_running && !p.running || !last_running && p.running ) ) {
 					WS.send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
 				} else if( last_jumping && !p.jumping || !last_jumping && p.jumping ) {
