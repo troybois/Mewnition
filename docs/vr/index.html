@@ -477,6 +477,7 @@
                     boss.last_anvil = curr_ts;
                     anvil.x = ( ( ( boss.x / TILE_SIZE ) | 0 ) - 5 );
                     if( anvil.x < 0 ) anvil.x = anvil.x + TILE_WIDTH;
+                    anvil.x *= TILE_SIZE;
                     anvil.y = boss.y;
                     anvil.active = true;
                 }
