@@ -485,7 +485,9 @@
                         boss.lives--;
                         g.active = false;
                         WS.send( String.fromCharCode( 0x05 ) + JSON.stringify( boss ) );
-                        if( boss.lives == 0 ) alert( "You lost!" );
+                        if( boss.lives == 0 ) {
+                            boss.active = false;
+                        }
                     }
                 }
             }

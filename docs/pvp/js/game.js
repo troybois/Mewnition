@@ -82,7 +82,7 @@ function win_load() {
         var ANVIL_VELOCITY = .4;
         var SHOT_GRAVITY = .003;
         var SHOT_VELOCITY = 1.4;
-		var SHOT_COOLDOWN = 1000 * 5;
+		var SHOT_COOLDOWN = 1000;
 
 		var BOSS_FPS = 120;
 		var IDLE_FPS = 120;
@@ -142,7 +142,7 @@ function win_load() {
             this.dx = 0;
             this.dy = 0;
             this.hitbox = [0, 0, 0, 0, -1, -1];
-            this.active = true;
+            this.active = false;
             this.frame = 0;
 			this.last_frame = -1;
 			this.last_anvil = -1;
@@ -535,13 +535,18 @@ function win_load() {
 					g.y = new_y;
 					g.dx = new_dx;
 					g.dy = new_dy;
+					if( id == ME && active != g.active ) {
+						WS.send( String.fromCharCode( 0x04 ) + String.fromCharCode( ME ) + JSON.stringify( g ) );
+					}
+					if( boss.active && xy_collision( boss, new_x + GRENADE_HWIDTH, new_y + GRENADE_HHEIGHT ) ) {
+	                    g.active = false;
+	                }
+	                var me = players[ ME ];
+	                if( id != ME && xy_collision( me, new_x + GRENADE_HWIDTH, new_y + GRENADE_HHEIGHT ) ) {
+	                	me.alive = false;
+	                	WS.send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( me ) );
+	                }
 				}
-				if( id == ME && active != g.active ) {
-					WS.send( String.fromCharCode( 0x04 ) + String.fromCharCode( ME ) + JSON.stringify( g ) );
-				}
-				if( boss.active && xy_collision( boss, new_x + GRENADE_HWIDTH, new_y + GRENADE_HHEIGHT ) ) {
-                    g.active = false;
-                }
 			}
 		}
 
@@ -736,7 +741,7 @@ function win_load() {
 			if( cursor_y < 0 ) cursor_x += CANVAS_WIDTH;
 
 			var tile_update, tile_x, tile_y, tile_val;
-			if( RIGHT_MB_DOWN && me.blocks > 0 ) {
+			if( RIGHT_MB_DOWN ) {
 				tile_x = ( cursor_x / TILE_SIZE ) | 0;
 				tile_y = ( cursor_y / TILE_SIZE ) | 0;
 				if( !tiles[ tile_y ][ tile_x ] ) {
