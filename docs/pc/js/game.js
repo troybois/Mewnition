@@ -607,12 +607,14 @@ function win_load() {
 			p = players[ ME ];
 			cursor_vx = ( ( e.clientX - rect.left ) / rect.width * VIEW_WIDTH ) | 0;
 			cursor_vy = ( ( e.clientY - rect.top ) / rect.height * VIEW_HEIGHT ) | 0;
+			var arm = p.arm;
 			p.arm = ( ( ( 5 * Math.PI / 2 - Math.atan2( cursor_vx - VIEW_HWIDTH, cursor_vy - VIEW_HHEIGHT ) ) % ( 2 * Math.PI ) / Math.PI ) * 180 ) | 0;
 			if( p.arm >= 90 && p.arm <= 270 ) {
 				p.right = false;
 			} else {
 				p.right = true;
 			}
+			if( p.arm != arm ) WS.send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ me ] ) );
 		}
 
 		function mousedown( e ) {
