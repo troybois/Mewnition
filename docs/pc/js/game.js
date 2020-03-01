@@ -614,7 +614,7 @@ function win_load() {
 			} else {
 				p.right = true;
 			}
-			if( p.arm != arm ) WS.send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ me ] ) );
+			if( p.arm != arm ) WS.send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
 		}
 
 		function mousedown( e ) {
