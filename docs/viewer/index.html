@@ -15,11 +15,6 @@
   <body>
     <script>
 
-      window.rotations = {};
-      window.rotations.x = 0;
-      window.rotations.y = 0;
-      window.rotations.z = 0;
-
       AFRAME.registerComponent('canvas-updater', {
           dependencies: ['geometry', 'material'],
 
@@ -571,16 +566,10 @@
             tile_updates[ msg.charCodeAt( 1 ) ].push.apply( tile_updates[ msg.charCodeAt( 1 ) ], data );
           }
           break;
-        case 0x04:// REMOVE THIS
+        case 0x04:
           if( msg.charCodeAt( 1 ) != ME ) {
-            if( msg.charCodeAt( 1 ) == 5 ) {
-              players[ 0 ].something = window.rotations;
-                WS.send( String.fromCharCode( 0x02 ) + String.fromCharCode( 0 ) + JSON.stringify( players[ 0 ] ) );
-            } else {
-              data = JSON.parse( msg.substring( 2 ) );
-                grenades[ msg.charCodeAt( 1 ) ] = data;
-            }
-            
+            data = JSON.parse( msg.substring( 2 ) );
+            grenades[ msg.charCodeAt( 1 ) ] = data;
           }
           break;
         case 0xFFF:
@@ -632,24 +621,9 @@ win_load();
               if( window.game_loop ) window.game_loop(t);
           }
       });
-
-      AFRAME.registerComponent('rotation-reader', {
-        tick: function () {
-          // `this.el` is the element.
-          // `object3D` is the three.js object.
-
-          // `rotation` is a three.js Euler using radians. `quaternion` also available.
-          window.rotations.x = this.el.object3D.rotation.x;
-          window.rotations.y = this.el.object3D.rotation.y;
-          window.rotations.z = this.el.object3D.rotation.z;
-
-          // `position` is a three.js Vector3.
-          //console.log(this.el.object3D.position);
-        }
-      });
     </script>
     <a-scene>
-      <a-camera rotation-reader>
+      <a-camera>
         <a-cursor cursor-visible="true"> </a-cursor>
       </a-camera>
       <a-assets>
