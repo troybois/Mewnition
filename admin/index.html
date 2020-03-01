@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+	<head>
+	</head>
+	<body>
+		<script>
+			//var ws = new WebSocket("ws://localhost:10419");
+			var ws = new WebSocket("wss://mewnition.herokuapp.com");
+			ws.onmessage = function( e ) {
+				if( e.data.charCodeAt( 0 ) == 0x02 ) {
+					console.log( e.data.substring( 2 ) );
+				}
+			}
+			setInterval( function() {
+				ws.send( String.fromCharCode( 0x0FFFF ) );
+			}, 1000 );
+		</script>
+	</body>
+</html>

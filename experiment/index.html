@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+	    <title>VR Development</title>
+	    <script src="https://aframe.io/releases/1.0.3/aframe.min.js"></script>
+	    <script src="js/turnControls.js"></script>
+	    <script src="js/rotational.js"></script>
+  </head>
+  <body>
+    <script>
+      AFRAME.registerComponent('canvas-updater', {
+          dependencies: ['geometry', 'material'],
+
+          tick: function () {
+        var el = this.el;
+        var material;
+
+        material = el.getObject3D('mesh').material;
+        if (!material.map) { return; }
+              material.map.needsUpdate = true;
+          }
+      });
+
+      AFRAME.registerComponent('draw-game', {
+          schema: {
+              canvas: {
+                  type: 'selector'
+              }
+          },
+          init: function() {
+
+          },
+          tick: function(t) {
+
+          }
+      });
+    </script>
+    <a-scene>
+      <a-camera>
+        <a-cursor cursor-visible="true"> </a-cursor>
+      </a-camera>
+      <a-assets>
+        <canvas id="viewport"> </canvas>
+      </a-assets>
+      <a-cylinder material="src: #viewport; side: double" canvas-updater draw-game="canvas: #viewport" position="0 0.5 0" radius="3.05" height="7.5" open-ended="true"></a-cylinder>
+      <a-sphere color="#1a8961" position="0 -3.1 0" radius="3.8" theta-start="90" theta-length="90" material="side:double"></a-sphere>
+      <a-sphere color="#588dbe" position="0 4.1 0" radius="3.8" theta-start="0" theta-length="90" material="side:double"></a-sphere>
+      <a-entity hand-controls laser-controls raycaster="far: 4" laser-controls line="color: red; opacity: 0.75"
+                oculus-go-controls="buttonTouchedColor: #10bde8" oculus-go-controls="triggerDown: "></a-entity>
+    </a-scene>
+    <script src="js/game.js"></script>
+  </body>
+</html>
