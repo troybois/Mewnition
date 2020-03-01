@@ -82,7 +82,7 @@ function win_load() {
         var ANVIL_VELOCITY = .4;
         var SHOT_GRAVITY = .003;
         var SHOT_VELOCITY = 1.4;
-		var SHOT_COOLDOWN = 1000 * 5;
+		var SHOT_COOLDOWN = 1000 * 3;
 
 		var BOSS_FPS = 120;
 		var IDLE_FPS = 120;

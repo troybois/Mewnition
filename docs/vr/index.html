@@ -570,14 +570,28 @@
 
         function update_anvil() {
             if( anvil.active ) {
-                anvil.y += ANVIL_VELOCITY * ticks;
-                if( anvil.y + ANVIL_HEIGHT > CANVAS_HEIGHT ) {
+                var new_y = anvil.y + ANVIL_VELOCITY * ticks;
+                var start_tile_x = ( anvil.x / TILE_SIZE ) | 0;
+                var tile = ( ( ( new_y + ANVIL_HEIGHT ) / TILE_SIZE ) | 0 ) - 1;
+                var yes = false;
+                if( tile > 0 && tile < TILE_HEIGHT ) {
+                    for( i = 0; i < PUSHEEN[ 0 ].length; i++ ) {
+                        if( tiles[ tile ][ ( start_tile_x + i ) % TILE_WIDTH ] ) {
+                            yes = true;
+                        }
+                    }
+                }
+                if( !yes ) {
+                    anvil.y = new_y;
+                }
+                if( yes || anvil.y + ANVIL_HEIGHT > CANVAS_HEIGHT ) {
                     anvil.active = false;
-                    anvil.y = CANVAS_HEIGHT - ANVIL_HEIGHT;
+                    if( anvil.y + ANVIL_HEIGHT > CANVAS_HEIGHT )
+                        anvil.y = CANVAS_HEIGHT - ANVIL_HEIGHT;
                     var start_tile_y = anvil.y / TILE_SIZE | 0;
                     var start_tile_x = anvil.x / TILE_SIZE | 0;
                     for( i = 0; i < PUSHEEN[ 0 ].length; i++ ) {
-                        for( j = start_tile_y; j < TILE_HEIGHT; j++ ) {
+                        for( j = start_tile_y; j < Math.min( start_tile_y + PUSHEEN.length, TILE_HEIGHT ); j++ ) {
                             tile_updates[ ME ].push( [ ( i + start_tile_x ) % TILE_WIDTH, j, PUSHEEN[ j - start_tile_y ][ i ] == 1 ] );
                         }
                     }
