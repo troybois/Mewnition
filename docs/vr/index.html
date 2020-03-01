@@ -586,6 +586,7 @@
                 }
                 if( yes || anvil.y + ANVIL_HEIGHT > CANVAS_HEIGHT ) {
                     anvil.active = false;
+                    WS.send( String.fromCharCode( 0x06 ) + JSON.stringify( anvil ) );
                     if( anvil.y + ANVIL_HEIGHT > CANVAS_HEIGHT )
                         anvil.y = CANVAS_HEIGHT - ANVIL_HEIGHT;
                     var start_tile_y = anvil.y / TILE_SIZE | 0;
