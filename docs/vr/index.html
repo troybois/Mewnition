@@ -4,8 +4,6 @@
     <meta charset="utf-8">
     <title>VR Development</title>
     <script src="https://aframe.io/releases/1.0.3/aframe.min.js"></script>
-    <script src="js/turnControls.js"></script>
-    <script src="js/rotational.js"></script>
   </head>
   <body>
     <script>
@@ -47,17 +45,16 @@
       });
     </script>
     <a-scene>
-      <a-camera>
-        <a-cursor cursor-visible="true"> </a-cursor>
-      </a-camera>
       <a-assets>
         <canvas id="theCanvas"> </canvas>
       </a-assets>
-      <a-cylinder material="src: #theCanvas; side: double" canvas-updater draw-game="canvas: #theCanvas" position="0 0.5 0" radius="3.05" height="7.5" open-ended="true"></a-cylinder>
-      <a-sphere color="#1a8961" position="0 -3.1 0" radius="3.8" theta-start="90" theta-length="90" material="side:double"></a-sphere>
-      <a-sphere color="#588dbe" position="0 4.1 0" radius="3.8" theta-start="0" theta-length="90" material="side:double"></a-sphere>
-      <a-entity hand-controls laser-controls raycaster="far: 4" laser-controls line="color: red; opacity: 0.75"
-                oculus-go-controls="buttonTouchedColor: #10bde8" oculus-go-controls="triggerDown: "></a-entity>
+      <a-camera look-controls>
+        <a-cursor a-cursor color="red" fuse="true" timeout="500"></a-cursor>
+      </a-camera>
+      <a-cylinder id="pill" material="src: #theCanvas; side: double" canvas-updater draw-game="canvas: #theCanvas" position="0 0.5 0" radius="3.05" height="7.5" open-ended="true"></a-cylinder>
+      <a-sphere color="#1a8961" position="0 -3.1 0" radius="3.05" theta-start="90" theta-length="90" material="side:double"></a-sphere>
+      <a-sphere color="#588dbe" position="0 4.1 0" radius="3.05" theta-start="0" theta-length="90" material="side:double"></a-sphere>
+      <a-entity oculus-go-controls="buttonTouchedColor: #10bde8"></a-entity>
     </a-scene>
   </body>
 </html>
