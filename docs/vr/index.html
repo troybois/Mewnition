@@ -19,6 +19,7 @@
             window.rotations.x = 0;
             window.rotations.y = 0;
             window.rotations.z = 0;
+            window.height = -1;
 
             AFRAME.registerComponent('canvas-updater', {
                     dependencies: ['geometry', 'material'],
@@ -528,6 +529,11 @@
             while( window.rotations.y < 0 ) window.rotations.y += Math.PI * 2;
             // /window.rotations.y = 2 * Math.PI - window.rotations.y;
             var xx = rotations.y / 2 / Math.PI * CANVAS_WIDTH;
+            var yy = 3.25 + window.height + Math.tan( window.rotations.x ) * 3.05;
+            if( yy > 7.00 ) yy = 7.00;
+            if( yy < 0 ) yy = 0;
+            yy = 7 - yy;
+            yy = ( yy / 7 ) * CANVAS_HEIGHT;
 
             CTX_VIEW.clearRect( 0, 0, VIEW_WIDTH, VIEW_HEIGHT );
             if( view_x < 0 ) {
@@ -545,7 +551,9 @@
                 CTX_VIEW.drawImage( CANVAS_TILE, 0, view_y, extra, VIEW_HEIGHT, VIEW_WIDTH - extra, 0, extra, VIEW_HEIGHT );
                 CTX_VIEW.drawImage( CANVAS_ENT, 0, view_y, extra, VIEW_HEIGHT, VIEW_WIDTH - extra, 0, extra, VIEW_HEIGHT );
             }
-            CTX_VIEW.clearRect( xx, 0, 64, 64 );
+            CTX_VIEW.translate( -32, 32 );
+            CTX_VIEW.clearRect( xx, yy, 64, 64 );
+            CTX_VIEW.setTransform(1,0,0,1,0,0);
             last_ts = ts;
         }
 
@@ -645,7 +653,7 @@ win_load();
                     window.rotations.z = this.el.object3D.rotation.z;
 
                     // `position` is a three.js Vector3.
-                    //console.log(this.el.object3D.position);
+                    if( window.height == -1 ) window.height = this.el.object3D.position.y;
                 }
             });
         </script>
@@ -657,7 +665,7 @@ win_load();
                 <canvas id="viewport"> </canvas>
             </a-assets>
             <a-cylinder material="src: #viewport; side: double" canvas-updater draw-game="canvas: #viewport" position="0 0.5 0" radius="3.05" height="7.5" open-ended="true"></a-cylinder>
-            <a-sphere color="#1a8961" position="0 -3.1 0" radius="3.05" theta-start="90" theta-length="90" material="side:double"></a-sphere>
+            <a-sphere color="#1a8961" position="0 -3.25 0" radius="3.05" theta-start="90" theta-length="90" material="side:double"></a-sphere>
             <a-sphere color="#588dbe" position="0 4.1 0" radius="3.05" theta-start="0" theta-length="90" material="side:double"></a-sphere>
             <a-entity hand-controls laser-controls raycaster="far: 4" laser-controls line="color: red; opacity: 0.75"
                                 oculus-go-controls="buttonTouchedColor: #10bde8" oculus-go-controls="triggerDown: "></a-entity>
