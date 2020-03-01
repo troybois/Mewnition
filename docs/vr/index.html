@@ -142,7 +142,7 @@
         var SHOT_GRAVITY = .003 * (2/3);
         var SHOT_VELOCITY = 1.4 * (2/3);
         var SHOT_COOLDOWN = 1000 * 5;
-        var ANVIL_COOLDOWN = 1000 * 5;
+        var ANVIL_COOLDOWN = 1000 * 2;
 
         var IDLE_FPS = 120;
         var RUN_FPS = 60;
@@ -471,7 +471,9 @@
                     g.dy = new_dy;
                     if( anvil.active && xy_collision( anvil, new_x + GRENADE_HWIDTH, new_y + GRENADE_HHEIGHT ) ) {
                         anvil.active = false;
+                        boss.last_anvil = curr_ts;
                         g.active = false;
+                        boss.last_anvil = curr_ts;
                         WS.send( String.fromCharCode( 0x06 ) + JSON.stringify( anvil ) );
                         var start_tile_y = anvil.y / TILE_SIZE | 0;
                         var start_tile_x = anvil.x / TILE_SIZE | 0;
@@ -555,8 +557,8 @@
                 boss.hitbox[ 4 ] = 0;
                 boss.hitbox[ 5 ] = rightmost;
             }
-            if( true ) {
-                if( curr_ts - boss.last_anvil >= ANVIL_COOLDOWN ) {
+            if( window.TRIGGER_DOWN ) {
+                if( !anvil.active && curr_ts - boss.last_anvil >= ANVIL_COOLDOWN ) {
                     boss.last_anvil = curr_ts;
                     anvil.x = ( ( ( boss.x / TILE_SIZE ) | 0 ) - 5 );
                     if( anvil.x < 0 ) anvil.x = anvil.x + TILE_WIDTH;
@@ -565,6 +567,7 @@
                     anvil.active = true;
                     WS.send( String.fromCharCode( 0x06 ) + JSON.stringify( anvil ) );
                 }
+                window.TRIGGER_DOWN = false;
             }
         }
 
@@ -586,6 +589,7 @@
                 }
                 if( yes || anvil.y + ANVIL_HEIGHT > CANVAS_HEIGHT ) {
                     anvil.active = false;
+                    boss.last_anvil = curr_ts;
                     WS.send( String.fromCharCode( 0x06 ) + JSON.stringify( anvil ) );
                     if( anvil.y + ANVIL_HEIGHT > CANVAS_HEIGHT )
                         anvil.y = CANVAS_HEIGHT - ANVIL_HEIGHT;
@@ -832,6 +836,9 @@
                         grenade.dx *= 2 / 3;
                         grenade.dy *= 2 / 3;
                     }
+                    break;
+                case 0x07:
+                    window.TRIGGER_DOWN = true;
                     break;
                 case 0xFFF:
                     WS.send( String.fromCharCode( 0xF ) );
