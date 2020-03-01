@@ -19,6 +19,7 @@
             window.rotations.y = 0;
             window.rotations.z = 0;
             window.height = -1;
+            window.TRIGGER_DOWN = false;
 
             AFRAME.registerComponent('canvas-updater', {
                     dependencies: ['geometry', 'material'],
@@ -471,7 +472,7 @@
             boss.y += boss.dy * ticks;
             if( boss.y < 0 ) boss.y = 0;
             if( boss.y + BOSS_HEIGHT > CANVAS_HEIGHT ) boss.y = CANVAS_HEIGHT - BOSS_HEIGHT;
-            if( boss.last_anvil == -1 ) boss.last_anvil = ANVIL_COOLDOWN - curr_ts;
+            if( boss.last_anvil == -1 ) boss.last_anvil = curr_ts - ANVIL_COOLDOWN;
             if( window.TRIGGER_DOWN ) {
                 if( curr_ts - boss.last_anvil >= ANVIL_COOLDOWN ) {
                     boss.last_anvil = curr_ts;
