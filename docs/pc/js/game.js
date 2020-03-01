@@ -16,7 +16,8 @@ function win_load() {
 		"otterCat_y_modGrenade.png",
 		"otterCat_y_run.png",
 		"background.png",
-		"block.png"],
+		"block.png",
+		"sphinx_idle.png"],
 		SPRITES = [],
 		ASSET_ERRORS = 0,
 		ASSET_LOADS = 0,
@@ -24,8 +25,8 @@ function win_load() {
 		j;
 
 	function assets_loaded() {
-		var WS = new WebSocket("wss://mewnition.herokuapp.com");
-		//var WS = new WebSocket("ws://localhost:10419");
+		//var WS = new WebSocket("wss://mewnition.herokuapp.com");
+		var WS = new WebSocket("ws://localhost:10419");
 		var BG_HEIGHT = 2304;
 		var BG_WIDTH = 1920;
 		var BG_COUNT = 3;
@@ -51,6 +52,11 @@ function win_load() {
 			}
 		}
 
+		var BOSS_HEIGHT = 384;
+        var BOSS_HHEIGHT = BOSS_HEIGHT / 2;
+        var BOSS_WIDTH = 384;
+        var BOSS_HWIDTH = BOSS_WIDTH / 2;
+
 		var PLAYER_HEIGHT = 96;
 		var PLAYER_HHEIGHT = PLAYER_HEIGHT / 2;
 		var PLAYER_WIDTH = 96;
@@ -66,10 +72,13 @@ function win_load() {
 		var GRAVITY = .006;
 		var JUMP_DY = -1.8;
 		var PLAYER_DX = .5;
+		var BOSS_ACCEL = .006;
+        var BOSS_VELOCITY = 5;
 		var SHOT_GRAVITY = .003;
 		var SHOT_VELOCITY = 1.4;
 		var SHOT_COOLDOWN = 1000 * 5;
 
+		var BOSS_FPS = 30;
 		var IDLE_FPS = 120;
 		var RUN_FPS = 60;
 
@@ -119,9 +128,16 @@ function win_load() {
 		}
 
 		function Boss() {
-			this.x = 0;
-			this.y = 0;
-			this.hitboxes = [];
+			this.x = CANVAS_WIDTH / 2;
+            this.y = 0;
+            this.target_x = 0;
+            this.target_y = 0;
+            this.dx = 0;
+            this.dy = 0;
+            this.hitboxes = [];
+            this.active = true;
+            this.frame = 0;
+			this.last_frame = -1;
 		}
 
 		function Anvil() {
@@ -251,7 +267,7 @@ function win_load() {
 					var axis2 = ( ( p.y + PLAYER_HEIGHT ) / TILE_SIZE ) | 0;
 					for( i = ( ( p.x + left ) / TILE_SIZE ) | 0; i >= boundary; i-- ) {
 						for( j = axis; j < axis2; j++ ) {
-							if( tiles[ j ][ i ] ) {
+							if( tiles[ j ][ i % TILE_WIDTH ] ) {
 								new_x = ( i + 1 ) * TILE_SIZE - left;
 								new_dx = 0;
 								done = true;
@@ -291,9 +307,9 @@ function win_load() {
 						}
 					} else if( new_y < p.y ) {
 						var boundary = ( ( new_y + HB_PLAYER_TOP ) / TILE_SIZE ) | 0;
-						var axis = ( ( p.x + left ) / TILE_SIZE ) | 0;
+						var axis = ( ( p.x + left + 1 ) / TILE_SIZE ) | 0;
 						var axis2 = ( ( p.x + right - 1 ) / TILE_SIZE ) | 0;
-						for( j = ( p.y / TILE_SIZE ) | 0; j >= boundary; j-- ) {
+						for( j = ( ( p.y + HB_PLAYER_TOP ) / TILE_SIZE ) | 0; j >= boundary; j-- ) {
 							for( i = axis; i <= axis2; i++ ) {
 								if( tiles[ j ][ i ] ) {
 									new_y = ( j + 1 ) * TILE_SIZE - HB_PLAYER_TOP;
@@ -310,6 +326,7 @@ function win_load() {
 				p.dy = new_dy;
 				p.x = new_x;
 				p.y = new_y;
+				if( p.right )
 				if( ME == id && ( last_running && !p.running || !last_running && p.running ) ) {
 					WS.send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
 				} else if( last_jumping && !p.jumping || !last_jumping && p.jumping ) {
@@ -357,36 +374,38 @@ function win_load() {
 				var tile_br_x = ( ( new_x + GRENADE_WIDTH ) / TILE_SIZE ) | 0, tile_br_y = ( ( new_y + GRENADE_HEIGHT ) / TILE_SIZE ) | 0;
 				var tile_bl_x = ( new_x / TILE_SIZE ) | 0, tile_bl_y = ( ( new_y + GRENADE_HEIGHT ) / TILE_SIZE ) | 0;
 				var explode = false, explode_x = ( ( new_x + GRENADE_HWIDTH ) / TILE_SIZE ) | 0, explode_y = ( ( new_y + GRENADE_HWIDTH ) / TILE_SIZE ) | 0;
-				if( new_y + GRENADE_HEIGHT >= CANVAS_HEIGHT ) {
-					g.active = false;
-					explode = true;
-					explode_y = TILE_HEIGHT - 1;
-				} else if( tiles[ tile_ul_y ][ tile_ul_x ] ) {
-					g.active = false;
-					explode = true;
-				} else if( tiles[ tile_ur_y ][ tile_ur_x ] ) {
-					g.active = false;
-					explode = true;
-				} else if( tiles[ tile_br_y ][ tile_br_x ] ) {
-					g.active = false;
-					explode = true;
-				} else if( tiles[ tile_bl_y ][ tile_bl_x ] ) {
-					g.active = false;
-					explode = true;
-				} else if( new_y <= 0 ) {
-					g.active = false;
-					explode = true;
-				}
-				var rad;
-				if( explode ) {
-					for( j = explode_y - 3; j <= explode_y + 3; j++ ) {
-						rad = Math.max( Math.abs( explode_y - j ) - 1, 0 );
-						for( i = explode_x - ( 3 - rad ); i <= explode_x + ( 3 - rad ); i++ ) {
-							if( j >= 0 && j < TILE_HEIGHT ) {
-								new_x = i;
-								new_x %= TILE_WIDTH;
-								if( new_x < 0 ) new_x += TILE_WIDTH;
-								tile_updates[ ME ].push( [ new_x, j, false ] );
+				if( g.active ) {
+					if( new_y + GRENADE_HEIGHT >= CANVAS_HEIGHT ) {
+						g.active = false;
+						explode = true;
+						explode_y = TILE_HEIGHT - 1;
+					} else if( tiles[ tile_ul_y ][ tile_ul_x ] ) {
+						g.active = false;
+						explode = true;
+					} else if( tiles[ tile_ur_y ][ tile_ur_x ] ) {
+						g.active = false;
+						explode = true;
+					} else if( tiles[ tile_br_y ][ tile_br_x ] ) {
+						g.active = false;
+						explode = true;
+					} else if( tiles[ tile_bl_y ][ tile_bl_x ] ) {
+						g.active = false;
+						explode = true;
+					} else if( new_y <= 0 ) {
+						g.active = false;
+						explode = true;
+					}
+					var rad;
+					if( explode ) {
+						for( j = explode_y - 3; j <= explode_y + 3; j++ ) {
+							rad = Math.max( Math.abs( explode_y - j ) - 1, 0 );
+							for( i = explode_x - ( 3 - rad ); i <= explode_x + ( 3 - rad ); i++ ) {
+								if( j >= 0 && j < TILE_HEIGHT ) {
+									new_x = i;
+									new_x %= TILE_WIDTH;
+									if( new_x < 0 ) new_x += TILE_WIDTH;
+									tile_updates[ ME ].push( [ new_x, j, false ] );
+								}
 							}
 						}
 					}
@@ -402,6 +421,38 @@ function win_load() {
 				}
 			}
 		}
+
+		function update_boss() {
+            if( boss.x < boss.target_x ) {
+                if( CANVAS_WIDTH - boss.target_x + boss.x < ( boss.target_x - boss.x ) ) {
+                    boss.dx -= BOSS_ACCEL * ticks;
+                } else {
+                    boss.dx += BOSS_ACCEL * ticks;
+                }
+            } else if( boss.x > boss.target_x ) {
+                if( CANVAS_WIDTH - boss.x + boss.target_x < ( boss.x - boss.target_x ) ) {
+                    boss.dx += BOSS_ACCEL * ticks;
+                } else {
+                    boss.dx -= BOSS_ACCEL * ticks;
+                }
+            }
+            boss.x += boss.dx;
+            if( boss.y < boss.target_y ) {
+                boss.dy += BOSS_ACCEL * ticks;
+            } else if( boss.y > boss.target_y ) {
+                boss.dy -= BOSS_ACCEL * ticks;
+            }
+            if( boss.dx > BOSS_VELOCITY ) boss.dx = BOSS_VELOCITY;
+            if( boss.dx < -BOSS_VELOCITY ) boss.dx = -BOSS_VELOCITY;
+            if( boss.dy > BOSS_VELOCITY ) boss.dy = BOSS_VELOCITY;
+            if( boss.dy < -BOSS_VELOCITY ) boss.dy = -BOSS_VELOCITY;
+            boss.x += boss.dx;
+            while( boss.x < 0 ) boss.x += CANVAS_WIDTH;
+            boss.x %= CANVAS_WIDTH;
+            boss.y += boss.dy;
+            if( boss.y < 0 ) boss.y = 0;
+            if( boss.y + BOSS_HEIGHT > CANVAS_HEIGHT ) boss.y = CANVAS_HEIGHT - BOSS_HEIGHT;
+        }
 
 		function draw_player( id ) {
 			var p, a, offset = 0;
@@ -475,6 +526,22 @@ function win_load() {
 			}
 		}
 
+		function draw_boss() {
+            if( boss.active ) {
+                if( boss.last_frame == -1 ) boss.last_frame = curr_ts;
+                if( curr_ts - boss.last_frame > BOSS_FPS ) {
+                    boss.frame += 1;
+                    boss.last_frame = curr_ts;
+                }
+                boss.frame %= 4;
+                CTX_ENT.drawImage( SPRITES[ 18 ], boss.frame * BOSS_WIDTH, 0, BOSS_WIDTH, BOSS_HEIGHT, boss.x, boss.y, BOSS_WIDTH, BOSS_HEIGHT );
+                var difference = ( boss.x + BOSS_WIDTH - CANVAS_WIDTH ) | 0;
+                if( difference > 0 ) {
+                    CTX_ENT.drawImage( SPRITES[ 18 ], boss.frame * BOSS_WIDTH, 0, BOSS_WIDTH, BOSS_HEIGHT, -BOSS_WIDTH + difference, boss.y | 0, BOSS_WIDTH, BOSS_HEIGHT );
+                }
+            }
+        }
+
 		function game_loop( ts ) {
 			curr_ts = ts;
 			if( last_ts == -1 ) last_ts = ts;
@@ -499,7 +566,9 @@ function win_load() {
 					tile_val = tile_val || tiles[ tile_y - 1 ][ tile_x ];
 					tile_val = tile_val || tiles[ tile_y + 1 ][ tile_x ];
 				}
-				if( tile_val ) tile_updates[ ME ].push( [ tile_x, tile_y, true ] );
+				if( tile_val ) {
+					tile_updates[ ME ].push( [ tile_x, tile_y, true ] );
+				}
 			}
 
 			if( tile_updates[ ME ].length > 0 ) {
@@ -520,6 +589,8 @@ function win_load() {
 				}
 			}
 
+			update_boss();
+
 			update_player( 0 );
 			update_player( 1 );
 			update_player( 2 );
@@ -531,6 +602,9 @@ function win_load() {
 			update_grenade( 3 );
 
 			CTX_ENT.clearRect( 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT );
+
+			draw_boss();
+
 			draw_grenade( 0 );
 			draw_grenade( 1 );
 			draw_grenade( 2 );
@@ -692,6 +766,16 @@ function win_load() {
 						data = JSON.parse( msg.substring( 2 ) );
 						grenades[ msg.charCodeAt( 1 ) ] = data;
 					}
+					break;
+				case 0x05:
+					data = JSON.parse( msg.substring( 1 ) );
+					boss = data;
+					boss.x /= 2 / 3;
+					boss.y /= 2 / 3;
+					boss.dx /= 2 / 3;
+					boss.dy /= 2 / 3;
+					boss.target_x /= 2 / 3;
+					boss.target_y /= 2 / 3;
 					break;
 				case 0xFFF:
 					WS.send( String.fromCharCode( 0xF ) );

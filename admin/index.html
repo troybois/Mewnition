@@ -3,17 +3,22 @@
 	<head>
 	</head>
 	<body>
+		<button id="reset">Reset Game</button>
+		<br />
+		<button id="start">Start Game</button>
 		<script>
-			//var ws = new WebSocket("ws://localhost:10419");
-			var ws = new WebSocket("wss://mewnition.herokuapp.com");
-			ws.onmessage = function( e ) {
-				if( e.data.charCodeAt( 0 ) == 0x02 ) {
-					console.log( e.data.substring( 2 ) );
-				}
-			}
+			var ws = new WebSocket("ws://localhost:10419");
+			//var ws = new WebSocket("wss://mewnition.herokuapp.com");
 			setInterval( function() {
 				ws.send( String.fromCharCode( 0x0FFFF ) );
 			}, 1000 );
+
+			document.getElementById( "reset" ).addEventListener( "mouseup", function() {
+				ws.send( String.fromCharCode( 0xFFF ) );
+			} );
+			document.getElementById( "start" ).addEventListener( "mouseup", function() {
+				ws.send( String.fromCharCode( 0x0 ) );
+			} );
 		</script>
 	</body>
 </html>

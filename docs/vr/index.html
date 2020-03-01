@@ -67,8 +67,8 @@
         j;
 
     function assets_loaded() {
-        var WS = new WebSocket("wss://mewnition.herokuapp.com");
-        //var WS = new WebSocket("ws://localhost:10419");
+        //var WS = new WebSocket("wss://mewnition.herokuapp.com");
+        var WS = new WebSocket("ws://localhost:10419");
         var BG_HEIGHT = 1536;
         var BG_WIDTH = 1280;
         var BG_COUNT = 3;
@@ -111,7 +111,7 @@
         var GRENADE_WIDTH = 20;
         var GRENADE_HWIDTH = GRENADE_WIDTH / 2;
 
-        var GRAVITY = .003 * (2/3);
+        var GRAVITY = .006 * (2/3);
         var JUMP_DY = -1.8 * (2/3);
         var PLAYER_DX = .5 * (2/3);
         var BOSS_ACCEL = .006 * (2/3);
@@ -540,9 +540,12 @@
         function draw_boss() {
             if( boss.active ) {
                 if( boss.last_frame == -1 ) boss.last_frame = curr_ts;
-                if( curr_ts - boss.last_frame > IDLE_FPS ) {
+                if( curr_ts - boss.last_frame > BOSS_FPS ) {
                     boss.frame += 1;
                     boss.last_frame = curr_ts;
+                }
+                if( boss.frame % 2 == 0 ) {
+                    WS.send( String.fromCharCode( 0x05 ) + JSON.stringify( boss ) );
                 }
                 boss.frame %= 4;
                 CTX_ENT.drawImage( SPRITES[ 18 ], boss.frame * BOSS_WIDTH, 0, BOSS_WIDTH, BOSS_HEIGHT, boss.x, boss.y, BOSS_WIDTH, BOSS_HEIGHT );
@@ -621,7 +624,7 @@
         }
 
         function ws_open() {
-            WS.send( String.fromCharCode( 0x05 ) );
+            //WS.send( String.fromCharCode( 0x05 ) );
         }
 
         function ws_msg( e ) {
