@@ -25,6 +25,7 @@ function win_load() {
 
 	function assets_loaded() {
 		var WS = new WebSocket("wss://mewnition.herokuapp.com");
+		//var WS = new WebSocket("ws://localhost:10419");
 		var BG_HEIGHT = 2304;
 		var BG_WIDTH = 1920;
 		var BG_COUNT = 3;
@@ -39,6 +40,10 @@ function win_load() {
 		var TILE_HEIGHT = CANVAS_HEIGHT / TILE_SIZE;
 		var tiles = [];
 		var tile_updates = [];
+		tile_updates[ 0 ] = [];
+		tile_updates[ 1 ] = [];
+		tile_updates[ 2 ] = [];
+		tile_updates[ 3 ] = [];
 		for( i = 0; i < TILE_HEIGHT; i++ ) {
 			tiles.push( [] );
 			for( j = 0; j < TILE_WIDTH; j++ ) {
@@ -101,6 +106,7 @@ function win_load() {
 			this.hitboxes = [];
 			this.jumping = false;
 			this.last_shot = -1;
+			this.tile_updates = [];
 		}
 
 		function Grenade() {
@@ -317,6 +323,7 @@ function win_load() {
 			if( PLAYER_COUNT > id ) {
 				g = grenades[ id ];
 				p = players[ id ];
+				var active = g.active;
 				if( g.active ) {
 					new_x = g.x;
 					new_y = g.y;
@@ -379,7 +386,7 @@ function win_load() {
 								new_x = i;
 								new_x %= TILE_WIDTH;
 								if( new_x < 0 ) new_x += TILE_WIDTH;
-								tile_updates.push( [ new_x, j, false ] );
+								tile_updates[ ME ].push( [ new_x, j, false ] );
 							}
 						}
 					}
@@ -389,6 +396,9 @@ function win_load() {
 					g.y = new_y;
 					g.dx = new_dx;
 					g.dy = new_dy;
+				}
+				if( id == ME && active != g.active ) {
+					WS.send( String.fromCharCode( 0x04 ) + String.fromCharCode( ME ) + JSON.stringify( g ) );
 				}
 			}
 		}
@@ -489,19 +499,24 @@ function win_load() {
 					tile_val = tile_val || tiles[ tile_y - 1 ][ tile_x ];
 					tile_val = tile_val || tiles[ tile_y + 1 ][ tile_x ];
 				}
-				if( tile_val ) tile_updates.push( [ tile_x, tile_y, true ] );
+				if( tile_val ) tile_updates[ ME ].push( [ tile_x, tile_y, true ] );
 			}
 
-			while( tile_updates.length > 0 ) {
-				tile_update = tile_updates.pop();
-				tile_x = tile_update[ 0 ];
-				tile_y = tile_update[ 1 ];
-				tile_val = tile_update[ 2 ];
-				tiles[ tile_y ][ tile_x ] = tile_val;
-				if( !tile_val ) {
-					CTX_TILE.clearRect( tile_x * TILE_SIZE, tile_y * TILE_SIZE, TILE_SIZE, TILE_SIZE );
-				} else {
-					CTX_TILE.drawImage( TILE_IMG, tile_x * TILE_SIZE, tile_y * TILE_SIZE );
+			if( tile_updates[ ME ].length > 0 ) {
+				WS.send( String.fromCharCode( 0x03 ) + String.fromCharCode( ME ) + JSON.stringify( tile_updates[ ME ] ) );
+			}
+			for( i = 0; i < PLAYER_COUNT; i++ ) {
+				while( tile_updates[ i ].length > 0 ) {
+					tile_update = tile_updates[ i ].pop();
+					tile_x = tile_update[ 0 ];
+					tile_y = tile_update[ 1 ];
+					tile_val = tile_update[ 2 ];
+					tiles[ tile_y ][ tile_x ] = tile_val;
+					if( !tile_val ) {
+						CTX_TILE.clearRect( tile_x * TILE_SIZE, tile_y * TILE_SIZE, TILE_SIZE, TILE_SIZE );
+					} else {
+						CTX_TILE.drawImage( TILE_IMG, tile_x * TILE_SIZE, tile_y * TILE_SIZE );
+					}
 				}
 			}
 
@@ -662,6 +677,18 @@ function win_load() {
 					if( msg.charCodeAt( 1 ) != ME ) {
 						data = JSON.parse( msg.substring( 2 ) );
 						players[ msg.charCodeAt( 1 ) ] = data;
+					}
+					break;
+				case 0x03:
+					if( msg.charCodeAt( 1 ) != ME ) {
+						data = JSON.parse( msg.substring( 2 ) );
+						tile_updates[ msg.charCodeAt( 1 ) ].push.apply( tile_updates[ msg.charCodeAt( 1 ) ], data );
+					}
+					break;
+				case 0x04:
+					if( msg.charCodeAt( 1 ) != ME ) {
+						data = JSON.parse( msg.substring( 2 ) );
+						grenades[ msg.charCodeAt( 1 ) ] = data;
 					}
 					break;
 				case 0xFFF:
