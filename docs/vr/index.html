@@ -100,6 +100,9 @@
         var BOSS_WIDTH = 256;
         var BOSS_HWIDTH = BOSS_WIDTH / 2;
 
+        var ANVIL_HEIGHT = 208;
+        var ANVIL_WIDTH = 336;
+
         var PLAYER_HEIGHT = 64;
         var PLAYER_HHEIGHT = PLAYER_HEIGHT / 2;
         var PLAYER_WIDTH = 64;
@@ -115,11 +118,13 @@
         var GRAVITY = .006 * (2/3);
         var JUMP_DY = -1.8 * (2/3);
         var PLAYER_DX = .5 * (2/3);
-        var BOSS_ACCEL = .006 * (2/3);
-        var BOSS_VELOCITY = 5 * (2/3);
+        var BOSS_ACCEL = .003 * (2/3);
+        var BOSS_VELOCITY = .35 * (2/3);
+        var ANVIL_VELOCITY = .4 * (2/3);
         var SHOT_GRAVITY = .003 * (2/3);
         var SHOT_VELOCITY = 1.4 * (2/3);
         var SHOT_COOLDOWN = 1000 * 5;
+        var ANVIL_COOLDOWN = 1000 * 5;
 
         var IDLE_FPS = 120;
         var RUN_FPS = 60;
@@ -181,12 +186,14 @@
             this.active = true;
             this.frame = 0;
             this.last_frame = -1;
+            this.last_anvil = -1;
         }
 
         function Anvil() {
             this.x = 0;
             this.y = 0;
             this.hitboxes = [];
+            this.active = false;
         }
 
         var players = [];
@@ -458,12 +465,31 @@
             if( boss.dx < -BOSS_VELOCITY ) boss.dx = -BOSS_VELOCITY;
             if( boss.dy > BOSS_VELOCITY ) boss.dy = BOSS_VELOCITY;
             if( boss.dy < -BOSS_VELOCITY ) boss.dy = -BOSS_VELOCITY;
-            boss.x += boss.dx;
+            boss.x += boss.dx * ticks;
             while( boss.x < 0 ) boss.x += CANVAS_WIDTH;
             boss.x %= CANVAS_WIDTH;
-            boss.y += boss.dy;
+            boss.y += boss.dy * ticks;
             if( boss.y < 0 ) boss.y = 0;
             if( boss.y + BOSS_HEIGHT > CANVAS_HEIGHT ) boss.y = CANVAS_HEIGHT - BOSS_HEIGHT;
+            if( boss.last_anvil == -1 ) boss.last_anvil = ANVIL_COOLDOWN - curr_ts;
+            if( window.TRIGGER_DOWN ) {
+                if( curr_ts - boss.last_anvil >= ANVIL_COOLDOWN ) {
+                    boss.last_anvil = curr_ts;
+                    anvil.x = ( ( ( boss.x / TILE_SIZE ) | 0 ) - 5 );
+                    if( anvil.x < 0 ) anvil.x = anvil.x + TILE_WIDTH;
+                    anvil.y = boss.y;
+                    anvil.active = true;
+                }
+            }
+        }
+
+        function update_anvil() {
+            if( anvil.active ) {
+                anvil.y += ANVIL_VELOCITY * ticks;
+                if( anvil.y + ANVIL_HEIGHT > CANVAS_HEIGHT ) {
+                    anvil.active = false;
+                }
+            }
         }
 
         function draw_player( id ) {
@@ -557,6 +583,12 @@
             }
         }
 
+        function draw_anvil() {
+            if( anvil.active ) {
+                CTX_ENT.drawImage( SPRITES[ 19 ], 0, 0, ANVIL_WIDTH, ANVIL_HEIGHT, anvil.x, anvil.y, ANVIL_WIDTH, ANVIL_HEIGHT );                
+            }
+        }
+
         function game_loop( ts ) {
             curr_ts = ts;
             if( last_ts == -1 ) last_ts = ts;
@@ -578,6 +610,7 @@
             }
 
             update_boss();
+            update_anvil();
 
             update_player( 0 );
             update_player( 1 );
@@ -590,6 +623,7 @@
             update_grenade( 3 );
 
             CTX_ENT.clearRect( 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT );
+            draw_anvil();
             draw_boss();
 
             draw_grenade( 0 );
@@ -741,6 +775,17 @@ win_load();
                     }
                 }
             }); */
+            AFRAME.registerComponent( "trigger-listener", {
+              init: function () {
+                var el = this.el;
+                el.addEventListener( "triggerdown", function( evt ) {
+                  window.TRIGGER_DOWN = true;
+                });
+                el.addEventListener( "triggerup", function( evt ) {
+                  window.TRIGGER_DOWN = false;
+                });
+              }
+            });
         </script>
         <a-scene>
             <a-camera rotation-reader>
@@ -753,8 +798,7 @@ win_load();
             <a-cylinder material="src: #viewport; side: double" canvas-updater draw-game="canvas: #viewport" position="0 0.5 0" radius="3.05" height="7.5" open-ended="true"></a-cylinder>
             <a-sphere color="#1a8961" position="0 -3.25 0" radius="3.05" theta-start="90" theta-length="90" material="side:double"></a-sphere>
             <a-sphere color="#588dbe" position="0 4.1 0" radius="3.05" theta-start="0" theta-length="90" material="side:double"></a-sphere>
-            <a-entity hand-controls laser-controls raycaster="far: 4" laser-controls line="color: red; opacity: 0.75"
-                                oculus-go-controls="buttonTouchedColor: #10bde8" oculus-go-controls="triggerDown: "></a-entity>
+            <a-entity oculus-go-controls trigger-listener></a-entity>
         </a-scene>
     </body>
 </html>

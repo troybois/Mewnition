@@ -75,6 +75,7 @@ function win_load() {
 		var PLAYER_DX = .5;
 		var BOSS_ACCEL = .006;
         var BOSS_VELOCITY = 5;
+        var ANVIL_VELOCITY = 6;
 		var SHOT_GRAVITY = .003;
 		var SHOT_VELOCITY = 1.4;
 		var SHOT_COOLDOWN = 1000 * 5;
@@ -145,6 +146,7 @@ function win_load() {
 			this.x = 0;
 			this.y = 0;
 			this.hitboxes = [];
+			this.active = false;
 		}
 
 		var players = [];
@@ -452,6 +454,12 @@ function win_load() {
             boss.y += boss.dy;
             if( boss.y < 0 ) boss.y = 0;
             if( boss.y + BOSS_HEIGHT > CANVAS_HEIGHT ) boss.y = CANVAS_HEIGHT - BOSS_HEIGHT;
+        }
+
+        function update_anvil() {
+        	if( anvil.active ) {
+
+        	}
         }
 
 		function draw_player( id ) {
