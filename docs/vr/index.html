@@ -484,12 +484,17 @@
                         }
                     }
                     if( boss.active && xy_collision( boss, new_x + GRENADE_HWIDTH, new_y + GRENADE_HHEIGHT ) ) {
-                        boss.lives--;
                         g.active = false;
+                        var x1 = (new_x + GRENADE_HWIDTH)
+                        var y1 = (new_y + GRENADE_HHEIGHT)
+                        var x2 = (boss.x + BOSS_HWIDTH)
+                        var y2 = (boss.y + BOSS_HHEIGHT)
+                        var direction = ( ( ( 5 * Math.PI / 2 - Math.atan2( x1 - x2, y1 - y2 ) ) % ( 2 * Math.PI ) / Math.PI ) * 180 ) | 0;
+                        direction += 180;
+                        direction %= 360;
+                        boss.dx = BOSS_VELOCITY * 500 * ANGLES[ direction ][ 1 ];
+                        boss.dy = BOSS_VELOCITY * 500 * ANGLES[ direction ][ 2 ];
                         WS.send( String.fromCharCode( 0x05 ) + JSON.stringify( boss ) );
-                        if( boss.lives == 0 ) {
-                            boss.active = false;
-                        }
                     }
                 }
             }
