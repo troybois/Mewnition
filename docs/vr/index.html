@@ -716,10 +716,24 @@ win_load();
                     if( window.height == -1 ) window.height = this.el.object3D.position.y;
                 }
             });
+           <!-- AFRAME.registerComponent('health-manager', {
+                init: function() {
+                    var health = 15;
+                    if( Grenade.position == this.position )
+                    {
+                        health -= 1;
+                    }
+                    if( health <= 0 )
+                    {
+                        <a-entity text="size: 10; value: You're dead, now you get to spectate"> <a_entity>
+                    }
+                }
+            }); -->
         </script>
         <a-scene>
             <a-camera rotation-reader>
                 <a-cursor cursor-visible="true"> </a-cursor>
+                <!--<a-entity heatlh-manager position="0 0 5 "></a-entity>-->
             </a-camera>
             <a-assets>
                 <canvas id="viewport"> </canvas>
