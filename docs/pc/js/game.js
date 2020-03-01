@@ -26,14 +26,14 @@ function win_load() {
 		j;
 
 	function assets_loaded() {
-		var WS = new WebSocket("wss://mewnition.herokuapp.com");
-		//var WS = new WebSocket("ws://localhost:10419");
+		//var WS = new WebSocket("wss://mewnition.herokuapp.com");
+		var WS = new WebSocket("ws://localhost:10419");
 		var BG_HEIGHT = 2304;
 		var BG_WIDTH = 1920;
 		var BG_COUNT = 3;
 		var CANVAS_WIDTH = BG_COUNT * BG_WIDTH;
 		var CANVAS_HEIGHT = BG_HEIGHT;
-		var VIEW_WIDTH = BG_WIDTH / 2;
+		var VIEW_WIDTH = BG_WIDTH;
 		var VIEW_HEIGHT = VIEW_WIDTH * window.screen.height / window.screen.width;
 		var VIEW_HWIDTH = VIEW_WIDTH / 2;
 		var VIEW_HHEIGHT = VIEW_HEIGHT / 2;
@@ -46,6 +46,7 @@ function win_load() {
 		tile_updates[ 1 ] = [];
 		tile_updates[ 2 ] = [];
 		tile_updates[ 3 ] = [];
+		tile_updates[ 4 ] = [];
 		for( i = 0; i < TILE_HEIGHT; i++ ) {
 			tiles.push( [] );
 			for( j = 0; j < TILE_WIDTH; j++ ) {
@@ -57,6 +58,9 @@ function win_load() {
         var BOSS_HHEIGHT = BOSS_HEIGHT / 2;
         var BOSS_WIDTH = 384;
         var BOSS_HWIDTH = BOSS_WIDTH / 2;
+
+        var ANVIL_HEIGHT = 312;
+        var ANVIL_WIDTH = 504;
 
 		var PLAYER_HEIGHT = 96;
 		var PLAYER_HHEIGHT = PLAYER_HEIGHT / 2;
@@ -71,13 +75,13 @@ function win_load() {
 		var GRENADE_HWIDTH = GRENADE_WIDTH / 2;
 
 		var GRAVITY = .006;
-		var JUMP_DY = -1.8;
-		var PLAYER_DX = .5;
-		var BOSS_ACCEL = .006;
-        var BOSS_VELOCITY = 5;
-        var ANVIL_VELOCITY = 6;
-		var SHOT_GRAVITY = .003;
-		var SHOT_VELOCITY = 1.4;
+        var JUMP_DY = -1.8;
+        var PLAYER_DX = .5;
+        var BOSS_ACCEL = .003;
+        var BOSS_VELOCITY = .35;
+        var ANVIL_VELOCITY = .4;
+        var SHOT_GRAVITY = .003;
+        var SHOT_VELOCITY = 1.4;
 		var SHOT_COOLDOWN = 1000 * 5;
 
 		var BOSS_FPS = 30;
@@ -114,10 +118,12 @@ function win_load() {
 			this.arm = 0;
 			this.running = false;
 			this.right = true;
-			this.hitboxes = [];
+			this.hitbox = [0, 0, 0, 0, -1, -1];
 			this.jumping = false;
 			this.last_shot = -1;
 			this.tile_updates = [];
+			this.alive = true;
+			this.blocks = 0;
 		}
 
 		function Grenade() {
@@ -126,7 +132,6 @@ function win_load() {
 			this.dx = 0;
 			this.dy = 0;
 			this.active = false;
-			this.hitboxes = [];
 		}
 
 		function Boss() {
@@ -136,16 +141,18 @@ function win_load() {
             this.target_y = 0;
             this.dx = 0;
             this.dy = 0;
-            this.hitboxes = [];
+            this.hitbox = [0, 0, 0, 0, -1, -1];
             this.active = true;
             this.frame = 0;
 			this.last_frame = -1;
+			this.last_anvil = -1;
+			this.lives = 9;
 		}
 
 		function Anvil() {
 			this.x = 0;
 			this.y = 0;
-			this.hitboxes = [];
+			this.hitbox = [0, 0, 0, 0, -1, -1];
 			this.active = false;
 		}
 
@@ -208,7 +215,88 @@ function win_load() {
 		var HB_GRENADE_LEFT = 0;
 		var HB_GRENADE_RIGHT = 30;
 
+		var HB_BOSS_TOP = 132;
+		var HB_BOSS_BOT = 369;
+		var HB_BOSS_LEFT = 90;
+		var HB_BOSS_RIGHT = 294;
+		var HB_BOSS_OFFSET = [ 0, -9, -21, -12 ];
+
+		var HB_ANVIL_TOP = 48;
+		var HB_ANVIL_BOT = 312;
+		var HB_ANVIL_LEFT = 0;
+		var HB_ANVIL_RIGHT = 504;
+
 		var last_ts = -1, ticks, curr_ts;
+
+		function xy_collision( e, x, y ) {
+            if( y >= e.hitbox[ 0 ] && y <= e.hitbox[ 1 ] ) {
+                if( x >= e.hitbox[ 2 ] && x <= e.hitbox[ 3 ] ) {
+                    return true;
+                }
+                if( e.hitbox[ 4 ] != -1 && x >= e.hitbox[ 4 ] && x <= e.hitbox[ 5 ] ) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+		function hitbox_collision( e1, e2 ) {
+			// upper left
+            if( e1.hitbox[ 0 ] >= e2.hitbox[ 0 ] && e1.hitbox[ 0 ] <= e2.hitbox[ 1 ] ) {
+            	if( e1.hitbox[ 2 ] >= e2.hitbox[ 2 ] && e1.hitbox[ 2 ] <= e2.hitbox[ 3 ] ) {
+            		return true;
+            	}
+            	if( e2.hitbox[ 4 ] != -1 && e1.hitbox[ 2 ] >= e2.hitbox[ 4 ] && e1.hitbox[ 2 ] <= e2.hitbox[ 5 ] ) {
+            		return true;
+            	}
+            	if( e1.hitbox[ 4 ] != -1 && e1.hitbox[ 4 ] >= e2.hitbox[ 2 ] && e1.hitbox[ 4 ] <= e2.hitbox[ 3 ] ) {
+            		return true;
+            	}
+            	if( e1.hitbox[ 4 ] != -1 && e2.hitbox[ 4 ] != -1 && e1.hitbox[ 4 ] >= e2.hitbox[ 4 ] && e1.hitbox[ 4 ] <= e2.hitbox[ 5 ] ) {
+            		return true;
+            	}
+            	if( e1.hitbox[ 3 ] >= e2.hitbox[ 2 ] && e1.hitbox[ 2 ] <= e2.hitbox[ 3 ] ) {
+            		return true;
+            	}
+            	if( e2.hitbox[ 4 ] != -1 && e1.hitbox[ 3 ] >= e2.hitbox[ 4 ] && e1.hitbox[ 2 ] <= e2.hitbox[ 5 ] ) {
+            		return true;
+            	}
+            	if( e1.hitbox[ 4 ] != -1 && e1.hitbox[ 5 ] >= e2.hitbox[ 2 ] && e1.hitbox[ 4 ] <= e2.hitbox[ 3 ] ) {
+            		return true;
+            	}
+            	if( e1.hitbox[ 4 ] != -1 && e2.hitbox[ 4 ] != -1 && e1.hitbox[ 5 ] >= e2.hitbox[ 4 ] && e1.hitbox[ 4 ] <= e2.hitbox[ 5 ] ) {
+            		return true;
+            	}
+            }
+            if( e1.hitbox[ 1 ] >= e2.hitbox[ 0 ] && e1.hitbox[ 1 ] <= e2.hitbox[ 1 ] ) {
+        	    if( e1.hitbox[ 2 ] >= e2.hitbox[ 2 ] && e1.hitbox[ 2 ] <= e2.hitbox[ 3 ] ) {
+            		return true;
+            	}
+            	if( e2.hitbox[ 4 ] != -1 && e1.hitbox[ 2 ] >= e2.hitbox[ 4 ] && e1.hitbox[ 2 ] <= e2.hitbox[ 5 ] ) {
+            		return true;
+            	}
+            	if( e1.hitbox[ 4 ] != -1 && e1.hitbox[ 4 ] >= e2.hitbox[ 2 ] && e1.hitbox[ 4 ] <= e2.hitbox[ 3 ] ) {
+            		return true;
+            	}
+            	if( e1.hitbox[ 4 ] != -1 && e2.hitbox[ 4 ] != -1 && e1.hitbox[ 4 ] >= e2.hitbox[ 4 ] && e1.hitbox[ 4 ] <= e2.hitbox[ 5 ] ) {
+            		return true;
+            	}
+            	if( e1.hitbox[ 3 ] >= e2.hitbox[ 2 ] && e1.hitbox[ 2 ] <= e2.hitbox[ 3 ] ) {
+            		return true;
+            	}
+            	if( e2.hitbox[ 4 ] != -1 && e1.hitbox[ 3 ] >= e2.hitbox[ 4 ] && e1.hitbox[ 2 ] <= e2.hitbox[ 5 ] ) {
+            		return true;
+            	}
+            	if( e1.hitbox[ 4 ] != -1 && e1.hitbox[ 5 ] >= e2.hitbox[ 2 ] && e1.hitbox[ 4 ] <= e2.hitbox[ 3 ] ) {
+            		return true;
+            	}
+            	if( e1.hitbox[ 4 ] != -1 && e2.hitbox[ 4 ] != -1 && e1.hitbox[ 5 ] >= e2.hitbox[ 4 ] && e1.hitbox[ 4 ] <= e2.hitbox[ 5 ] ) {
+            		return true;
+            	}
+            }
+            return false;
+		}
+
 		function update_player( id ) {
 			var p, new_x, new_y, new_dx = 0, new_dy = 0;
 			if( PLAYER_COUNT > id ) {
@@ -329,6 +417,33 @@ function win_load() {
 				p.dy = new_dy;
 				p.x = new_x;
 				p.y = new_y;
+				p.hitbox[ 4 ] = -1;
+	            p.hitbox[ 5 ] = -1;
+	            p.hitbox[ 0 ] = Math.max( 0, p.y + HB_PLAYER_TOP );
+	            p.hitbox[ 1 ] = Math.min( CANVAS_HEIGHT, p.y + HB_PLAYER_BOT );
+	            var leftmost = p.x + left;
+	            var rightmost = p.x + right;
+	            while( leftmost < 0 ) leftmost += CANVAS_WIDTH;
+	            leftmost %= CANVAS_WIDTH;
+	            while( rightmost < 0 ) rightmost += CANVAS_WIDTH;
+	            rightmost %= CANVAS_WIDTH;
+	            if( leftmost < rightmost ) {
+	            	p.hitbox[ 2 ] = leftmost;
+	            	p.hitbox[ 3 ] = rightmost;
+	            } else {
+	            	p.hitbox[ 2 ] = leftmost;
+	            	p.hitbox[ 3 ] = CANVAS_WIDTH;
+	            	p.hitbox[ 4 ] = 0;
+	            	p.hitbox[ 5 ] = rightmost;
+	            }
+	            if( boss.active && hitbox_collision( p, boss ) ) {
+	            	p.alive = false;
+	            	WS.send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
+	            } 
+	            if( anvil.active && hitbox_collision( p, anvil ) ) {
+	            	p.alive = false;
+	            	WS.send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
+	            }
 				if( ME == id && ( last_running && !p.running || !last_running && p.running ) ) {
 					WS.send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
 				} else if( last_jumping && !p.jumping || !last_jumping && p.jumping ) {
@@ -406,7 +521,10 @@ function win_load() {
 									new_x = i;
 									new_x %= TILE_WIDTH;
 									if( new_x < 0 ) new_x += TILE_WIDTH;
-									tile_updates[ ME ].push( [ new_x, j, false ] );
+									if( tiles[ j ][ new_x ] && id == ME ) {
+										p.blocks++;
+										tile_updates[ ME ].push( [ new_x, j, false ] );
+									}
 								}
 							}
 						}
@@ -421,6 +539,9 @@ function win_load() {
 				if( id == ME && active != g.active ) {
 					WS.send( String.fromCharCode( 0x04 ) + String.fromCharCode( ME ) + JSON.stringify( g ) );
 				}
+				if( boss.active && xy_collision( boss, new_x + GRENADE_HWIDTH, new_y + GRENADE_HHEIGHT ) ) {
+                    g.active = false;
+                }
 			}
 		}
 
@@ -454,18 +575,60 @@ function win_load() {
             boss.y += boss.dy;
             if( boss.y < 0 ) boss.y = 0;
             if( boss.y + BOSS_HEIGHT > CANVAS_HEIGHT ) boss.y = CANVAS_HEIGHT - BOSS_HEIGHT;
+            boss.hitbox[ 4 ] = -1;
+            boss.hitbox[ 5 ] = -1;
+            boss.hitbox[ 0 ] = Math.max( 0, boss.y + HB_BOSS_TOP );
+            boss.hitbox[ 1 ] = Math.min( CANVAS_HEIGHT, boss.y + HB_BOSS_BOT );
+            var leftmost = boss.x + HB_BOSS_LEFT;
+            var rightmost = boss.x + HB_BOSS_RIGHT;
+            while( leftmost < 0 ) leftmost += CANVAS_WIDTH;
+            leftmost %= CANVAS_WIDTH;
+            while( rightmost < 0 ) rightmost += CANVAS_WIDTH;
+            rightmost %= CANVAS_WIDTH;
+            if( leftmost < rightmost ) {
+            	boss.hitbox[ 2 ] = leftmost;
+            	boss.hitbox[ 3 ] = rightmost;
+            } else {
+            	boss.hitbox[ 2 ] = leftmost;
+            	boss.hitbox[ 3 ] = CANVAS_WIDTH;
+            	boss.hitbox[ 4 ] = 0;
+            	boss.hitbox[ 5 ] = rightmost;
+            }
         }
 
         function update_anvil() {
-        	if( anvil.active ) {
-
-        	}
+            if( anvil.active ) {
+                anvil.y += ANVIL_VELOCITY * ticks;
+                if( anvil.y + ANVIL_HEIGHT > CANVAS_HEIGHT ) {
+                    anvil.active = false;
+                }
+                anvil.hitbox[ 4 ] = -1;
+	            anvil.hitbox[ 5 ] = -1;
+	            anvil.hitbox[ 0 ] = Math.max( 0, anvil.y + HB_ANVIL_TOP );
+	            anvil.hitbox[ 1 ] = Math.min( CANVAS_HEIGHT, anvil.y + HB_ANVIL_BOT );
+	            var leftmost = anvil.x + HB_ANVIL_LEFT;
+	            var rightmost = anvil.x + HB_ANVIL_RIGHT;
+	            while( leftmost < 0 ) leftmost += CANVAS_WIDTH;
+	            leftmost %= CANVAS_WIDTH;
+	            while( rightmost < 0 ) rightmost += CANVAS_WIDTH;
+	            rightmost %= CANVAS_WIDTH;
+	            if( leftmost < rightmost ) {
+	            	anvil.hitbox[ 2 ] = leftmost;
+	            	anvil.hitbox[ 3 ] = rightmost;
+	            } else {
+	            	anvil.hitbox[ 2 ] = leftmost;
+	            	anvil.hitbox[ 3 ] = CANVAS_WIDTH;
+	            	anvil.hitbox[ 4 ] = 0;
+	            	anvil.hitbox[ 5 ] = rightmost;
+	            }
+            }
         }
 
 		function draw_player( id ) {
 			var p, a, offset = 0;
 			if( PLAYER_COUNT > id ) {
 				p = players[ id ];
+				if( !p.alive ) return;
 				if( p.last_frame == -1 ) p.last_frame = curr_ts;
 				if( p.anim == "idle" ) {
 					if( curr_ts - p.last_frame > IDLE_FPS ) {
@@ -550,6 +713,16 @@ function win_load() {
             }
         }
 
+        function draw_anvil() {
+            if( anvil.active ) {
+                CTX_ENT.drawImage( SPRITES[ 19 ], 0, 0, ANVIL_WIDTH, ANVIL_HEIGHT, anvil.x, anvil.y, ANVIL_WIDTH, ANVIL_HEIGHT );
+                var difference = ( anvil.x + ANVIL_WIDTH - CANVAS_WIDTH ) | 0;
+	            if( difference > 0 ) {
+	                CTX_ENT.drawImage( SPRITES[ 19 ], 0, 0, ANVIL_WIDTH, ANVIL_HEIGHT, -ANVIL_WIDTH + difference, anvil.y | 0, ANVIL_WIDTH, ANVIL_HEIGHT );
+	            }
+            }   
+        }
+
 		function game_loop( ts ) {
 			curr_ts = ts;
 			if( last_ts == -1 ) last_ts = ts;
@@ -563,26 +736,29 @@ function win_load() {
 			if( cursor_y < 0 ) cursor_x += CANVAS_WIDTH;
 
 			var tile_update, tile_x, tile_y, tile_val;
-			if( RIGHT_MB_DOWN ) {
+			if( RIGHT_MB_DOWN && me.blocks > 0 ) {
 				tile_x = ( cursor_x / TILE_SIZE ) | 0;
 				tile_y = ( cursor_y / TILE_SIZE ) | 0;
-				if( tile_y == TILE_HEIGHT - 1 ) {
-					tile_val = true;
-				} else if( tile_y >= 35 ) {
-					tile_val = tiles[ tile_y ][ ( tile_x + 1 ) % TILE_WIDTH ];
-					tile_val = tile_val || tiles[ tile_y ][ tile_x == 0 ? TILE_WIDTH - 1 : tile_x - 1 ];
-					tile_val = tile_val || tiles[ tile_y - 1 ][ tile_x ];
-					tile_val = tile_val || tiles[ tile_y + 1 ][ tile_x ];
-				}
-				if( tile_val ) {
-					tile_updates[ ME ].push( [ tile_x, tile_y, true ] );
+				if( !tiles[ tile_y ][ tile_x ] ) {
+					if( tile_y == TILE_HEIGHT - 1 ) {
+						tile_val = true;
+					} else if( tile_y >= 35 ) {
+						tile_val = tiles[ tile_y ][ ( tile_x + 1 ) % TILE_WIDTH ];
+						tile_val = tile_val || tiles[ tile_y ][ tile_x == 0 ? TILE_WIDTH - 1 : tile_x - 1 ];
+						tile_val = tile_val || tiles[ tile_y - 1 ][ tile_x ];
+						tile_val = tile_val || tiles[ tile_y + 1 ][ tile_x ];
+					}
+					if( tile_val ) {
+						tile_updates[ ME ].push( [ tile_x, tile_y, true ] );
+						me.blocks--;
+					}
 				}
 			}
 
 			if( tile_updates[ ME ].length > 0 ) {
 				WS.send( String.fromCharCode( 0x03 ) + String.fromCharCode( ME ) + JSON.stringify( tile_updates[ ME ] ) );
 			}
-			for( i = 0; i < PLAYER_COUNT; i++ ) {
+			for( i = 0; i <= PLAYER_COUNT; i++ ) {
 				while( tile_updates[ i ].length > 0 ) {
 					tile_update = tile_updates[ i ].pop();
 					tile_x = tile_update[ 0 ];
@@ -598,6 +774,7 @@ function win_load() {
 			}
 
 			update_boss();
+			update_anvil();
 
 			update_player( 0 );
 			update_player( 1 );
@@ -611,6 +788,7 @@ function win_load() {
 
 			CTX_ENT.clearRect( 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT );
 
+			draw_anvil();
 			draw_boss();
 
 			draw_grenade( 0 );
@@ -784,6 +962,12 @@ function win_load() {
 					boss.dy /= 2 / 3;
 					boss.target_x /= 2 / 3;
 					boss.target_y /= 2 / 3;
+					break;
+				case 0x06:
+					data = JSON.parse( msg.substring( 1 ) );
+					anvil = data;
+					anvil.x /= 2 / 3;
+					anvil.y /= 2 / 3;
 					break;
 				case 0xFFF:
 					WS.send( String.fromCharCode( 0xF ) );
