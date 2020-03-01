@@ -530,7 +530,6 @@
       }
 
       last_ts = ts;
-      window.requestAnimationFrame( game_loop );
     }
 
     function ws_open() {
@@ -543,8 +542,7 @@
       switch( msg.charCodeAt( 0 ) ) {
         case 0x00:
           PLAYER_COUNT = msg.charCodeAt( 1 );
-
-          window.requestAnimationFrame( game_loop );
+          window.game_loop = game_loop;
           break;
         case 0x02:
           if( msg.charCodeAt( 1 ) != ME ) {
@@ -615,7 +613,7 @@ win_load();
 
           },
           tick: function(t) {
-
+              if( window.game_loop ) window.game_loop(t);
           }
       });
     </script>
