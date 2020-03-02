@@ -548,7 +548,7 @@ function win_load() {
 				if( boss.active && xy_collision( boss, new_x + GRENADE_HWIDTH, new_y + GRENADE_HHEIGHT ) ) {
                     g.active = false;
                 }
-                var me = players[ me ];
+                var me = players[ ME ];
                 if( me.active && xy_collision( me, new_x + GRENADE_HWIDTH, new_y + GRENADE_HHEIGHT ) ) {
                     me.alive = false;
                     send( String.fromCharCode( 0x02 ) + String.fromCharCode( ME ) + JSON.stringify( me ) );
