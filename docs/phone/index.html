@@ -6,7 +6,8 @@
 		<script type="text/javascript" src="https://cdn.rawgit.com/alexgibson/shake.js/master/shake.js"></script>
 		<script>
 			//var ws = new WebSocket("ws://localhost:10419");
-			var ws = new WebSocket("wss://mewnition.herokuapp.com");
+			//var ws = new WebSocket("wss://mewnition.herokuapp.com");
+			var WS = new WebSocket("ws://localhost:10419");
 			var shakeEvent = new Shake({threshold: 15});
 		    shakeEvent.start();
 		    window.addEventListener('shake', function(){

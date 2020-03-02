@@ -26,8 +26,8 @@ function win_load() {
 		j;
 
 	function assets_loaded() {
-		var WS = new WebSocket("wss://mewnition.herokuapp.com");
-		//var WS = new WebSocket("ws://localhost:10419");
+		//var WS = new WebSocket("wss://mewnition.herokuapp.com");
+		var WS = new WebSocket("ws://localhost:10419");
 		var BG_HEIGHT = 2304;
 		var BG_WIDTH = 1920;
 		var BG_COUNT = 3;
@@ -436,14 +436,6 @@ function win_load() {
 	            	p.hitbox[ 4 ] = 0;
 	            	p.hitbox[ 5 ] = rightmost;
 	            }
-	            if( boss.active && hitbox_collision( p, boss ) ) {
-	            	p.alive = false;
-	            	WS.send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
-	            } 
-	            if( anvil.active && hitbox_collision( p, anvil ) ) {
-	            	p.alive = false;
-	            	WS.send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
-	            }
 				if( ME == id && ( last_running && !p.running || !last_running && p.running ) ) {
 					WS.send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
 				} else if( last_jumping && !p.jumping || !last_jumping && p.jumping ) {
@@ -538,9 +530,6 @@ function win_load() {
 					if( id == ME && active != g.active ) {
 						WS.send( String.fromCharCode( 0x04 ) + String.fromCharCode( ME ) + JSON.stringify( g ) );
 					}
-					if( boss.active && xy_collision( boss, new_x + GRENADE_HWIDTH, new_y + GRENADE_HHEIGHT ) ) {
-	                    g.active = false;
-	                }
 	                var me = players[ ME ];
 	                if( id != ME && xy_collision( me, new_x + GRENADE_HWIDTH, new_y + GRENADE_HHEIGHT ) ) {
 	                	me.alive = false;
@@ -778,9 +767,6 @@ function win_load() {
 				}
 			}
 
-			update_boss();
-			update_anvil();
-
 			update_player( 0 );
 			update_player( 1 );
 			update_player( 2 );
@@ -792,9 +778,6 @@ function win_load() {
 			update_grenade( 3 );
 
 			CTX_ENT.clearRect( 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT );
-
-			draw_anvil();
-			draw_boss();
 
 			draw_grenade( 0 );
 			draw_grenade( 1 );
