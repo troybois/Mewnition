@@ -25,9 +25,11 @@ function win_load() {
 		i,
 		j;
 
+	var WS_OPEN = false;
+
 	function assets_loaded() {
-		//var WS = new WebSocket("wss://mewnition.herokuapp.com");
-		var WS = new WebSocket("ws://localhost:10419");
+		var WS = new WebSocket("wss://mewnition.herokuapp.com");
+		//var WS = new WebSocket("ws://localhost:10419");
 		var BG_HEIGHT = 2304;
 		var BG_WIDTH = 1920;
 		var BG_COUNT = 3;
@@ -142,7 +144,7 @@ function win_load() {
             this.dx = 0;
             this.dy = 0;
             this.hitbox = [0, 0, 0, 0, -1, -1];
-            this.active = false;
+            this.active = true;
             this.frame = 0;
 			this.last_frame = -1;
 			this.last_anvil = -1;
@@ -227,6 +229,10 @@ function win_load() {
 		var HB_ANVIL_RIGHT = 504;
 
 		var last_ts = -1, ticks, curr_ts;
+
+		function send( msg ) {
+			if( WS_OPEN ) WS.send( msg );
+		}
 
 		function xy_collision( e, x, y ) {
             if( y >= e.hitbox[ 0 ] && y <= e.hitbox[ 1 ] ) {
@@ -436,10 +442,18 @@ function win_load() {
 	            	p.hitbox[ 4 ] = 0;
 	            	p.hitbox[ 5 ] = rightmost;
 	            }
+	            if( boss.active && hitbox_collision( p, boss ) ) {
+	            	p.alive = false;
+	            	send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
+	            } 
+	            if( anvil.active && hitbox_collision( p, anvil ) ) {
+	            	p.alive = false;
+	            	send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
+	            }
 				if( ME == id && ( last_running && !p.running || !last_running && p.running ) ) {
-					WS.send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
+					send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
 				} else if( last_jumping && !p.jumping || !last_jumping && p.jumping ) {
-					WS.send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
+					send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
 				}
 			}
 		}
@@ -506,9 +520,9 @@ function win_load() {
 					}
 					var rad;
 					if( explode ) {
-						for( j = explode_y - 3; j <= explode_y + 3; j++ ) {
+						for( j = explode_y - 4; j <= explode_y + 4; j++ ) {
 							rad = Math.max( Math.abs( explode_y - j ) - 1, 0 );
-							for( i = explode_x - ( 3 - rad ); i <= explode_x + ( 3 - rad ); i++ ) {
+							for( i = explode_x - ( 4 - rad ); i <= explode_x + ( 4 - rad ); i++ ) {
 								if( j >= 0 && j < TILE_HEIGHT ) {
 									new_x = i;
 									new_x %= TILE_WIDTH;
@@ -527,15 +541,18 @@ function win_load() {
 					g.y = new_y;
 					g.dx = new_dx;
 					g.dy = new_dy;
-					if( id == ME && active != g.active ) {
-						WS.send( String.fromCharCode( 0x04 ) + String.fromCharCode( ME ) + JSON.stringify( g ) );
-					}
-	                var me = players[ ME ];
-	                if( id != ME && xy_collision( me, new_x + GRENADE_HWIDTH, new_y + GRENADE_HHEIGHT ) ) {
-	                	me.alive = false;
-	                	WS.send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( me ) );
-	                }
 				}
+				if( id == ME && active != g.active ) {
+					send( String.fromCharCode( 0x04 ) + String.fromCharCode( ME ) + JSON.stringify( g ) );
+				}
+				if( boss.active && xy_collision( boss, new_x + GRENADE_HWIDTH, new_y + GRENADE_HHEIGHT ) ) {
+                    g.active = false;
+                }
+                var me = PLAYERS[ me ];
+                if( me.active && xy_collision( me, new_x + GRENADE_HWIDTH, new_y + GRENADE_HHEIGHT ) ) {
+                    me.alive = false;
+                    send( String.fromCharCode( 0x02 ) + String.fromCharCode( ME ) + JSON.stringify( me ) );
+                }
 			}
 		}
 
@@ -750,7 +767,7 @@ function win_load() {
 			}
 
 			if( tile_updates[ ME ].length > 0 ) {
-				WS.send( String.fromCharCode( 0x03 ) + String.fromCharCode( ME ) + JSON.stringify( tile_updates[ ME ] ) );
+				send( String.fromCharCode( 0x03 ) + String.fromCharCode( ME ) + JSON.stringify( tile_updates[ ME ] ) );
 			}
 			for( i = 0; i <= PLAYER_COUNT; i++ ) {
 				while( tile_updates[ i ].length > 0 ) {
@@ -767,6 +784,9 @@ function win_load() {
 				}
 			}
 
+			//update_boss();
+			//update_anvil();
+
 			update_player( 0 );
 			update_player( 1 );
 			update_player( 2 );
@@ -778,6 +798,9 @@ function win_load() {
 			update_grenade( 3 );
 
 			CTX_ENT.clearRect( 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT );
+
+			//draw_anvil();
+			//draw_boss();
 
 			draw_grenade( 0 );
 			draw_grenade( 1 );
@@ -862,7 +885,7 @@ function win_load() {
 			} else {
 				p.right = true;
 			}
-			if( p.arm != arm ) WS.send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
+			if( p.arm != arm ) send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
 		}
 
 		function mousedown( e ) {
@@ -900,6 +923,7 @@ function win_load() {
 
 		function ws_open() {
 			WS.send( String.fromCharCode( 0x01 ) );
+			WS_OPEN = true;
 		}
 
 		function ws_msg( e ) {
@@ -958,7 +982,8 @@ function win_load() {
 					anvil.y /= 2 / 3;
 					break;
 				case 0xFFF:
-					WS.send( String.fromCharCode( 0xF ) );
+					//send( String.fromCharCode( 0xF ) );
+					WS.close();
 					break;
 				case 0xFFFF:
 					console.log( "keep alive" );
@@ -967,7 +992,9 @@ function win_load() {
 		}
 
 		function ws_close( e ) {
-
+			console.log( e.code );
+			console.log( e.reason )
+			WS_OPEN = false;
 		}
 
 		WS.onopen = ws_open;
