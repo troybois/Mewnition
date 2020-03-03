@@ -25,10 +25,11 @@ function win_load() {
 		i,
 		j;
 
-	var WS_OPEN = false;
-
 	function assets_loaded() {
-		var WS = new WebSocket("wss://mewnition.herokuapp.com");
+		var WS_OPEN = false;
+		var WS_CLOSE = false;
+		var URL = "wss://mewnition.herokuapp.com";
+		var WS = new WebSocket( URL );
 		//var WS = new WebSocket("ws://localhost:10419");
 		var BG_HEIGHT = 2304;
 		var BG_WIDTH = 1920;
@@ -921,6 +922,10 @@ function win_load() {
 			WS_OPEN = true;
 		}
 
+		function ws_reconnect() {
+			WS_OPEN = true;
+		}
+
 		function ws_msg( e ) {
 			var msg = e.data;
 			var data;
@@ -978,10 +983,10 @@ function win_load() {
 					break;
 				case 0xFFF:
 					//send( String.fromCharCode( 0xF ) );
+					WS_CLOSE = true;
 					WS.close();
 					break;
 				case 0xFFFF:
-					console.log( "keep alive" );
 					break;
 			}
 		}
@@ -990,11 +995,16 @@ function win_load() {
 			console.log( e.code );
 			console.log( e.reason )
 			WS_OPEN = false;
+			if( WS_CLOSE ) return;
+			WS = new WebSocket( URL );
+			WS.addEventListener( "open", ws_reconnect );
+			WS.addEventListener( "message", ws_msg );
+			WS.addEventListener( "close", ws_close );
 		}
 
-		WS.onopen = ws_open;
-		WS.onmessage = ws_msg;
-		WS.onclose = ws_close;
+		WS.addEventListener( "open", ws_open );
+		WS.addEventListener( "message", ws_msg );
+		WS.addEventListener( "close", ws_close );
 		
 	}
 
