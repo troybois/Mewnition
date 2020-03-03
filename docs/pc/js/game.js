@@ -420,10 +420,21 @@ function win_load() {
 						}
 					}
 				}
+				var last_dx = p.dx;
+				var last_dy = p.dy;
 				p.dx = new_dx;
 				p.dy = new_dy;
 				p.x = new_x;
 				p.y = new_y;
+				if( ME == id && ( last_running && !p.running || !last_running && p.running ) ) {
+					send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
+				} else if( last_jumping && !p.jumping || !last_jumping && p.jumping ) {
+					send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
+				} else if( ( new_dx >= 0 && last_dx < 0 ) || ( new_dx <= 0 && last_dx > 0 ) ) {
+					send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
+				} else if( ( new_dy >= 0 && last_dy < 0 ) || ( new_dy <= 0 && last_dy > 0 ) ) {
+					send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
+				}
 				p.hitbox[ 4 ] = -1;
 	            p.hitbox[ 5 ] = -1;
 	            p.hitbox[ 0 ] = Math.max( 0, p.y + HB_PLAYER_TOP );
@@ -451,11 +462,6 @@ function win_load() {
 	            	p.alive = false;
 	            	send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
 	            }
-				if( ME == id && ( last_running && !p.running || !last_running && p.running ) ) {
-					send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
-				} else if( last_jumping && !p.jumping || !last_jumping && p.jumping ) {
-					send( String.fromCharCode( 0x2 ) + String.fromCharCode( ME ) + JSON.stringify( players[ ME ] ) );
-				}
 			}
 		}
 
