@@ -92,7 +92,7 @@ function win_load() {
 		var RUN_FPS = 60;
 
 		var PLAYER_COUNT = 4;
-		var ME = 3;
+		var ME = -1;
 
 		var A_DOWN = false;
 		var D_DOWN = false;
@@ -937,17 +937,21 @@ function win_load() {
 			var data;
 			switch( msg.charCodeAt( 0 ) ) {
 				case 0x00:
-					PLAYER_COUNT = msg.charCodeAt( 1 );
-					console.log( PLAYER_COUNT );
-					document.addEventListener( "keydown", keydown );
-					document.addEventListener( "keyup", keyup );
+					if( ME != -1 ) {
+						PLAYER_COUNT = msg.charCodeAt( 1 );
+						console.log( PLAYER_COUNT );
+						document.addEventListener( "keydown", keydown );
+						document.addEventListener( "keyup", keyup );
 
-					CANVAS_VIEW.addEventListener( "mousemove", mousemove );
-					CANVAS_VIEW.addEventListener( "mousedown", mousedown );
-					CANVAS_VIEW.addEventListener( "mouseup", mouseup );
-					CANVAS_VIEW.addEventListener( "contextmenu", contextmenu );
+						CANVAS_VIEW.addEventListener( "mousemove", mousemove );
+						CANVAS_VIEW.addEventListener( "mousedown", mousedown );
+						CANVAS_VIEW.addEventListener( "mouseup", mouseup );
+						CANVAS_VIEW.addEventListener( "contextmenu", contextmenu );
 
-					window.requestAnimationFrame( game_loop );
+						window.requestAnimationFrame( game_loop );
+					} else {
+						alert( "Game started, but player ID was -1" );
+					}
 					break;
 				case 0x01:
 					ME = msg.charCodeAt( 1 );
