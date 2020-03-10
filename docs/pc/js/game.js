@@ -18,7 +18,16 @@ function win_load() {
 		"background.png",
 		"block.png",
 		"sphinx_idle.png",
-		"anvil.png"],
+		"anvil.png",
+		"otterCat_c_arms_light.png",
+		"otterCat_k_arms_light.png",
+		"otterCat_m_arms_light.png",
+		"otterCat_y_arms_light.png",
+		"otterCat_c_modGrenade_light.png",
+		"otterCat_k_modGrenade_light.png",
+		"otterCat_m_modGrenade_light.png",
+		"otterCat_y_modGrenade_light.png",
+		"sphinx_light.png"],
 		SPRITES = [],
 		ASSET_ERRORS = 0,
 		ASSET_LOADS = 0,
@@ -29,6 +38,7 @@ function win_load() {
 		var WS_OPEN = false;
 		var WS_CLOSE = false;
 		var URL = "wss://mewnition.herokuapp.com";
+		//var URL = "ws://localhost:10419";
 		var WS = new WebSocket( URL );
 		//var WS = new WebSocket("ws://localhost:10419");
 		var BG_HEIGHT = 2304;
@@ -85,14 +95,17 @@ function win_load() {
         var ANVIL_VELOCITY = .4;
         var SHOT_GRAVITY = .003;
         var SHOT_VELOCITY = 1.4;
-		var SHOT_COOLDOWN = 1000 * 3;
+		var SHOT_COOLDOWN = 1000 * 1;
 
 		var BOSS_FPS = 120;
 		var IDLE_FPS = 120;
 		var RUN_FPS = 60;
 
-		var PLAYER_COUNT = 4;
+		var ACTIVE = [];
+		var PLAYER_COUNT = 0;
 		var ME = -1;
+		var SPECTATE = -1;
+		var SPECTATE_READY = true;
 
 		var A_DOWN = false;
 		var D_DOWN = false;
@@ -125,7 +138,8 @@ function win_load() {
 			this.jumping = false;
 			this.last_shot = -1;
 			this.tile_updates = [];
-			this.alive = true;
+			this.alive = false;
+			this.connected = false;
 			this.blocks = 0;
 		}
 
@@ -195,6 +209,11 @@ function win_load() {
 		CANVAS_ENT.height = CANVAS_HEIGHT;
 		var CTX_ENT = CANVAS_ENT.getContext( "2d" );
 
+		var CANVAS_LIGHT = document.createElement( "canvas" );
+		CANVAS_LIGHT.width = CANVAS_WIDTH;
+		CANVAS_LIGHT.height = CANVAS_HEIGHT;
+		var CTX_LIGHT = CANVAS_LIGHT.getContext( "2d" );
+
 		var CANVAS_VIEW = document.getElementById( "viewport" );
 		CANVAS_VIEW.width = VIEW_WIDTH;
 		CANVAS_VIEW.height = VIEW_HEIGHT;
@@ -228,6 +247,8 @@ function win_load() {
 		var HB_ANVIL_BOT = 312;
 		var HB_ANVIL_LEFT = 0;
 		var HB_ANVIL_RIGHT = 504;
+
+		var STARTED = false;
 
 		var last_ts = -1, ticks, curr_ts;
 
@@ -305,9 +326,8 @@ function win_load() {
 		}
 
 		function update_player( id ) {
-			var p, new_x, new_y, new_dx = 0, new_dy = 0;
-			if( PLAYER_COUNT > id ) {
-				p = players[ id ];
+			var p = players[ id ], new_x, new_y, new_dx = 0, new_dy = 0;
+			if( p.connected ) {
 				new_x = p.x;
 				new_y = p.y;
 				new_dx = p.dx;
@@ -466,10 +486,9 @@ function win_load() {
 		}
 
 		function update_grenade( id ) {
-			var p, g, new_x = 0, new_y = 0, new_dx = 0, new_dy = 0;
-			if( PLAYER_COUNT > id ) {
+			var p = players[ id ], g, new_x = 0, new_y = 0, new_dx = 0, new_dy = 0;
+			if( p.connected ) {
 				g = grenades[ id ];
-				p = players[ id ];
 				var active = g.active;
 				if( g.active ) {
 					new_x = g.x;
@@ -479,7 +498,7 @@ function win_load() {
 					new_dy += SHOT_GRAVITY * ticks;
 					new_x += new_dx * ticks;
 					new_y += new_dy * ticks;
-				} else if( id == ME ) {
+				} else if( id == ME && p.alive ) {
 					if( LEFT_MB_DOWN ) {
 						var passed;
 						if( p.last_shot == -1 ) p.last_shot = curr_ts - SHOT_COOLDOWN;
@@ -638,9 +657,8 @@ function win_load() {
         }
 
 		function draw_player( id ) {
-			var p, a, offset = 0;
-			if( PLAYER_COUNT > id ) {
-				p = players[ id ];
+			var p = players[ id ], a, offset = 0;
+			if( p.connected ) {
 				if( !p.alive ) return;
 				if( p.last_frame == -1 ) p.last_frame = curr_ts;
 				if( p.anim == "idle" ) {
@@ -670,6 +688,11 @@ function win_load() {
 						CTX_ENT.translate( -36, -66 );
 						CTX_ENT.drawImage( SPRITES[ id * 4 ], 0, 0 );
 						CTX_ENT.setTransform( 1, 0, 0, 1, 0, 0 );
+						CTX_LIGHT.translate( -PLAYER_WIDTH + difference + 42, ( p.y | 0 ) + 60 + offset | 0 );
+						CTX_LIGHT.rotate( p.arm / 180 * Math.PI );
+						CTX_LIGHT.translate( -36, -66 );
+						CTX_LIGHT.drawImage( SPRITES[ 20 + id ], 0, 0 );
+						CTX_LIGHT.setTransform( 1, 0, 0, 1, 0, 0 );
 					} else {
 						CTX_ENT.scale( -1, 1 );
 						CTX_ENT.translate( -difference, p.y | 0 );
@@ -679,33 +702,49 @@ function win_load() {
 						CTX_ENT.translate( -36, -66 );
 						CTX_ENT.drawImage( SPRITES[ id * 4 ], 0, 0 );
 						CTX_ENT.setTransform( 1, 0, 0, 1, 0, 0 );
+						CTX_LIGHT.scale( -1, 1 );
+						CTX_LIGHT.translate( -difference + 42, ( p.y | 0 ) + 60 + offset );
+						CTX_LIGHT.rotate( ( 180 - p.arm ) / 180 * Math.PI );
+						CTX_LIGHT.translate( -36, -66 );
+						CTX_LIGHT.drawImage( SPRITES[ 20 + id ], 0, 0 );
+						CTX_LIGHT.setTransform( 1, 0, 0, 1, 0, 0 );
 					}
 				}
 				if( p.right ) {
 					CTX_ENT.translate( p.x | 0, p.y | 0 );
+					CTX_LIGHT.translate( p.x | 0, p.y | 0 );
 				} else {
 					CTX_ENT.translate( ( p.x | 0 ) + PLAYER_WIDTH, p.y | 0 );
 					CTX_ENT.scale( -1, 1 );
+					CTX_LIGHT.translate( ( p.x | 0 ) + PLAYER_WIDTH, p.y | 0 );
+					CTX_LIGHT.scale( -1, 1 );
 				}
 				CTX_ENT.drawImage( a, p.frame * PLAYER_WIDTH, 0, PLAYER_WIDTH, PLAYER_HEIGHT, 0, 0, PLAYER_WIDTH, PLAYER_HEIGHT );
 				CTX_ENT.translate( 42, 60 + offset );
+				CTX_LIGHT.translate( 42, 60 + offset );
 				if( p.right ) {
 					CTX_ENT.rotate( p.arm / 180 * Math.PI );
+					CTX_LIGHT.rotate( p.arm / 180 * Math.PI );
 				} else {
 					CTX_ENT.rotate( ( 180 - p.arm ) / 180 * Math.PI );
+					CTX_LIGHT.rotate( ( 180 - p.arm ) / 180 * Math.PI );
 				}
 				CTX_ENT.translate( -36, -66 );
+				CTX_LIGHT.translate( -36, -66 );
 				CTX_ENT.drawImage( SPRITES[ id * 4 ], 0, 0 );
+				CTX_LIGHT.drawImage( SPRITES[ 20 + id ], 0, 0 );
 				CTX_ENT.setTransform( 1, 0, 0, 1, 0, 0 );
+				CTX_LIGHT.setTransform( 1, 0, 0, 1, 0, 0 );
 			}
 		}
 
 		function draw_grenade( id ) {
-			var g, a, offset = 0;
-			if( PLAYER_COUNT > id ) {
+			var p = players[ id ], g, a, offset = 0;
+			if( p.connected ) {
 				g = grenades[ id ];
 				if( g.active ) {
 					CTX_ENT.drawImage( SPRITES[ id * 4 + 2 ], g.x | 0, g.y | 0 );
+					CTX_LIGHT.drawImage( SPRITES[ 24 + id ], ( g.x | 0 ) - 33, ( g.y | 0 ) - 33 );
 				}
 			}
 		}
@@ -718,10 +757,12 @@ function win_load() {
                     boss.last_frame = curr_ts;
                 }
                 boss.frame %= 4;
-                CTX_ENT.drawImage( SPRITES[ 18 ], boss.frame * BOSS_WIDTH, 0, BOSS_WIDTH, BOSS_HEIGHT, boss.x, boss.y, BOSS_WIDTH, BOSS_HEIGHT );
+                CTX_ENT.drawImage( SPRITES[ 18 ], boss.frame * BOSS_WIDTH, 0, BOSS_WIDTH, BOSS_HEIGHT, boss.x | 0, boss.y | 0, BOSS_WIDTH, BOSS_HEIGHT );
+                CTX_LIGHT.drawImage( SPRITES[ 28 ], 0, 0, 1024, 1024, ( boss.x | 0 ) - 320, ( boss.y | 0 ) - 320, 1024, 1024 );
                 var difference = ( boss.x + BOSS_WIDTH - CANVAS_WIDTH ) | 0;
                 if( difference > 0 ) {
                     CTX_ENT.drawImage( SPRITES[ 18 ], boss.frame * BOSS_WIDTH, 0, BOSS_WIDTH, BOSS_HEIGHT, -BOSS_WIDTH + difference, boss.y | 0, BOSS_WIDTH, BOSS_HEIGHT );
+                    CTX_LIGHT.drawImage( SPRITES[ 28 ], 0, 0, 1024, 1024, -BOSS_WIDTH + difference - 320, ( boss.y | 0 ) - 320, 1024, 1024 );
                 }
             }
         }
@@ -736,6 +777,15 @@ function win_load() {
             }   
         }
 
+        function draw_light() {
+        	CTX_LIGHT.globalCompositeOperation = "destination-in";
+        	CTX_ENT.drawImage( CANVAS_TILE, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT );
+        	CTX_LIGHT.drawImage( CANVAS_ENT, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT );
+        	//CTX_LIGHT.globalCompositeOperation = "destination-over";
+			//CTX_LIGHT.fillStyle = "#303030";
+        	//CTX_LIGHT.fillRect( 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT );
+        }
+
 		function game_loop( ts ) {
 			curr_ts = ts;
 			if( last_ts == -1 ) last_ts = ts;
@@ -743,27 +793,30 @@ function win_load() {
 
 			var me = players[ ME ];
 
-			cursor_x = ( cursor_vx + me.x - VIEW_HWIDTH + PLAYER_HWIDTH ) % CANVAS_WIDTH;
-			if( cursor_x < 0 ) cursor_x += CANVAS_WIDTH;
-			cursor_y = ( cursor_vy + me.y - VIEW_HHEIGHT + PLAYER_HHEIGHT ) % CANVAS_HEIGHT;
-			if( cursor_y < 0 ) cursor_x += CANVAS_WIDTH;
+			if( me.alive ) {
 
-			var tile_update, tile_x, tile_y, tile_val;
-			if( RIGHT_MB_DOWN && me.blocks > 0 ) {
-				tile_x = ( cursor_x / TILE_SIZE ) | 0;
-				tile_y = ( cursor_y / TILE_SIZE ) | 0;
-				if( !tiles[ tile_y ][ tile_x ] ) {
-					if( tile_y == TILE_HEIGHT - 1 ) {
-						tile_val = true;
-					} else if( tile_y >= 35 ) {
-						tile_val = tiles[ tile_y ][ ( tile_x + 1 ) % TILE_WIDTH ];
-						tile_val = tile_val || tiles[ tile_y ][ tile_x == 0 ? TILE_WIDTH - 1 : tile_x - 1 ];
-						tile_val = tile_val || tiles[ tile_y - 1 ][ tile_x ];
-						tile_val = tile_val || tiles[ tile_y + 1 ][ tile_x ];
-					}
-					if( tile_val ) {
-						tile_updates[ ME ].push( [ tile_x, tile_y, true ] );
-						me.blocks--;
+				cursor_x = ( cursor_vx + me.x - VIEW_HWIDTH + PLAYER_HWIDTH ) % CANVAS_WIDTH;
+				if( cursor_x < 0 ) cursor_x += CANVAS_WIDTH;
+				cursor_y = ( cursor_vy + me.y - VIEW_HHEIGHT + PLAYER_HHEIGHT ) % CANVAS_HEIGHT;
+				if( cursor_y < 0 ) cursor_x += CANVAS_WIDTH;
+
+				var tile_update, tile_x, tile_y, tile_val;
+				if( RIGHT_MB_DOWN && ( !STARTED || me.blocks > 0 ) ) {
+					tile_x = ( cursor_x / TILE_SIZE ) | 0;
+					tile_y = ( cursor_y / TILE_SIZE ) | 0;
+					if( !tiles[ tile_y ][ tile_x ] ) {
+						if( tile_y == TILE_HEIGHT - 1 ) {
+							tile_val = true;
+						} else if( tile_y >= 35 ) {
+							tile_val = tiles[ tile_y ][ ( tile_x + 1 ) % TILE_WIDTH ];
+							tile_val = tile_val || tiles[ tile_y ][ tile_x == 0 ? TILE_WIDTH - 1 : tile_x - 1 ];
+							tile_val = tile_val || tiles[ tile_y - 1 ][ tile_x ];
+							tile_val = tile_val || tiles[ tile_y + 1 ][ tile_x ];
+						}
+						if( tile_val ) {
+							tile_updates[ ME ].push( [ tile_x, tile_y, true ] );
+							me.blocks--;
+						}
 					}
 				}
 			}
@@ -771,8 +824,10 @@ function win_load() {
 			if( tile_updates[ ME ].length > 0 ) {
 				send( String.fromCharCode( 0x03 ) + String.fromCharCode( ME ) + JSON.stringify( tile_updates[ ME ] ) );
 			}
+			var authoritative = false;
 			for( i = 0; i <= PLAYER_COUNT; i++ ) {
 				while( tile_updates[ i ].length > 0 ) {
+					authoritative = true;
 					tile_update = tile_updates[ i ].pop();
 					tile_x = tile_update[ 0 ];
 					tile_y = tile_update[ 1 ];
@@ -784,6 +839,9 @@ function win_load() {
 						CTX_TILE.drawImage( TILE_IMG, tile_x * TILE_SIZE, tile_y * TILE_SIZE );
 					}
 				}
+			}
+			if( ACTIVE.length > 0 && ME == ACTIVE[ 0 ] ) {
+				send( String.fromCharCode( 0x09 ) + JSON.stringify( tiles ) );
 			}
 
 			update_boss();
@@ -800,6 +858,9 @@ function win_load() {
 			update_grenade( 3 );
 
 			CTX_ENT.clearRect( 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT );
+			CTX_LIGHT.globalCompositeOperation = "source-over";
+			CTX_LIGHT.fillStyle = "#242424";
+        	CTX_LIGHT.fillRect( 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT );
 
 			draw_anvil();
 			draw_boss();
@@ -814,10 +875,15 @@ function win_load() {
 			draw_player( 2 );
 			draw_player( 3 );
 
-			var p = players[ ME ];
+			var p = players[ SPECTATE ];
+			if( !p.alive ) {
+
+			}
+
 			view_x = ( p.x | 0 ) + PLAYER_HWIDTH - VIEW_HWIDTH;
 			view_y = ( p.y | 0 ) + PLAYER_HHEIGHT - VIEW_HHEIGHT;
 
+			CTX_VIEW.globalCompositeOperation = "source-over";
 			CTX_VIEW.clearRect( 0, 0, VIEW_WIDTH, VIEW_HEIGHT );
 			if( view_x < 0 ) {
 				CTX_VIEW.drawImage( CANVAS_BG, CANVAS_WIDTH + view_x, view_y, -view_x, VIEW_HEIGHT, 0, 0, -view_x, VIEW_HEIGHT );
@@ -828,6 +894,7 @@ function win_load() {
 			CTX_VIEW.drawImage( CANVAS_TILE, view_x, view_y, VIEW_WIDTH, VIEW_HEIGHT, 0, 0, VIEW_WIDTH, VIEW_HEIGHT );
 			CTX_VIEW.drawImage( CANVAS_ENT, view_x, view_y, VIEW_WIDTH, VIEW_HEIGHT, 0, 0, VIEW_WIDTH, VIEW_HEIGHT );
 			var extra = view_x + VIEW_WIDTH;
+			var extra_light = extra;
 			if( extra > CANVAS_WIDTH ) {
 				extra -= CANVAS_WIDTH;
 				CTX_VIEW.drawImage( CANVAS_BG, 0, view_y, extra, VIEW_HEIGHT, VIEW_WIDTH - extra, 0, extra, VIEW_HEIGHT );
@@ -835,8 +902,17 @@ function win_load() {
 				CTX_VIEW.drawImage( CANVAS_ENT, 0, view_y, extra, VIEW_HEIGHT, VIEW_WIDTH - extra, 0, extra, VIEW_HEIGHT );
 			}
 
+			draw_light();
+			CTX_VIEW.globalCompositeOperation = "multiply";
+			if( view_x < 0 ) CTX_VIEW.drawImage( CANVAS_LIGHT, CANVAS_WIDTH + view_x, view_y, -view_x, VIEW_HEIGHT, 0, 0, -view_x, VIEW_HEIGHT );
+			CTX_VIEW.drawImage( CANVAS_LIGHT, view_x, view_y, VIEW_WIDTH, VIEW_HEIGHT, 0, 0, VIEW_WIDTH, VIEW_HEIGHT );
+			if( extra_light > CANVAS_WIDTH ) {
+				CTX_VIEW.drawImage( CANVAS_LIGHT, 0, view_y, extra, VIEW_HEIGHT, VIEW_WIDTH - extra, 0, extra, VIEW_HEIGHT );
+			}
+
 			last_ts = ts;
-			if( p.alive ) window.requestAnimationFrame( game_loop );
+
+			window.requestAnimationFrame( game_loop );
 		}
 
 		function keydown( e ) {
@@ -930,6 +1006,35 @@ function win_load() {
 
 		function ws_reconnect() {
 			WS_OPEN = true;
+			if( ME != 5 ) send( String.fromCharCode( 0x08 ) + String.fromCharCode( ME ) );
+		}
+
+		function parse_active( msg ) {
+			var new_count = 0;
+			var new_active = [];
+			players[ 0 ].alive = players[ 0 ].connected = ( msg.charCodeAt( 0 ) == 1 );
+			if( players[ 0 ].alive ) {
+				new_active.push( 0 );
+				new_count++;
+			}
+			players[ 1 ].alive = players[ 1 ].connected = ( msg.charCodeAt( 1 ) == 1 );
+			if( players[ 1 ].alive ) {
+				new_active.push( 1 );
+				new_count++;
+			}
+			players[ 2 ].alive = players[ 2 ].connected = ( msg.charCodeAt( 2 ) == 1 );
+			if( players[ 2 ].alive ) {
+				new_active.push( 2 );
+				new_count++;
+			}
+			players[ 3 ].alive = players[ 3 ].connected = ( msg.charCodeAt( 3 ) == 1 );
+			if( players[ 3 ].alive ) {
+				new_active.push( 3 );
+				new_count++;
+			}
+			PLAYER_COUNT = new_count;
+			ACTIVE = new_active;
+			console.log(ACTIVE);
 		}
 
 		function ws_msg( e ) {
@@ -937,9 +1042,27 @@ function win_load() {
 			var data;
 			switch( msg.charCodeAt( 0 ) ) {
 				case 0x00:
-					if( ME != -1 ) {
-						PLAYER_COUNT = msg.charCodeAt( 1 );
+					STARTED = true;
+					SHOT_COOLDOWN = 1000 * 3;
+					break;
+				case 0x01:
+					if( ME == -1 && ( ME = msg.charCodeAt( 1 ) ) != 5 ) {
+						SPECTATE = ME;
+						console.log( ME );
 						console.log( PLAYER_COUNT );
+						console.log( ACTIVE );
+						parse_active( msg.substring( 2 ) );
+						if( msg.substring( 6 ) ) {
+							tiles = JSON.parse( msg.substring( 7 ) );
+							var tile_y, tile_x;
+							for( tile_y = 0; tile_y < tiles.length; tile_y++ ) {
+								for( tile_x = 0; tile_x < tiles[ 0 ].length; tile_x++ ) {
+									if( tiles[ tile_y ][ tile_x ] ) {
+										CTX_TILE.drawImage( TILE_IMG, tile_x * TILE_SIZE, tile_y * TILE_SIZE );		
+									}
+								}
+							}
+						}
 						document.addEventListener( "keydown", keydown );
 						document.addEventListener( "keyup", keyup );
 
@@ -949,13 +1072,11 @@ function win_load() {
 						CANVAS_VIEW.addEventListener( "contextmenu", contextmenu );
 
 						window.requestAnimationFrame( game_loop );
+					} else if( ME < 4 && ME != msg.charCodeAt( 1 ) ) {
+						parse_active( msg.substring( 2 ) );
 					} else {
-						alert( "Game started, but player ID was -1" );
+						alert( "Game is full or already started" );
 					}
-					break;
-				case 0x01:
-					ME = msg.charCodeAt( 1 );
-					console.log( ME );
 					break;
 				case 0x02:
 					if( msg.charCodeAt( 1 ) != ME ) {
@@ -990,6 +1111,9 @@ function win_load() {
 					anvil = data;
 					anvil.x /= 2 / 3;
 					anvil.y /= 2 / 3;
+					break;
+				case 0x08:
+					parse_active( msg.substring( 1 ) );
 					break;
 				case 0xFFF:
 					//send( String.fromCharCode( 0xF ) );

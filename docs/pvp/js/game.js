@@ -18,7 +18,15 @@ function win_load() {
 		"background.png",
 		"block.png",
 		"sphinx_idle.png",
-		"anvil.png"],
+		"anvil.png",
+		"otterCat_c_arms_light.png",
+		"otterCat_k_arms_light.png",
+		"otterCat_m_arms_light.png",
+		"otterCat_y_arms_light.png",
+		"otterCat_c_modGrenade_light.png",
+		"otterCat_k_modGrenade_light.png",
+		"otterCat_m_modGrenade_light.png",
+		"otterCat_y_modGrenade_light.png"],
 		SPRITES = [],
 		ASSET_ERRORS = 0,
 		ASSET_LOADS = 0,
@@ -194,6 +202,11 @@ function win_load() {
 		CANVAS_ENT.width = CANVAS_WIDTH;
 		CANVAS_ENT.height = CANVAS_HEIGHT;
 		var CTX_ENT = CANVAS_ENT.getContext( "2d" );
+
+		var CANVAS_LIGHT = document.createElement( "canvas" );
+		CANVAS_LIGHT.width = CANVAS_WIDTH;
+		CANVAS_LIGHT.height = CANVAS_HEIGHT;
+		var CTX_LIGHT = CANVAS_LIGHT.getContext( "2d" );
 
 		var CANVAS_VIEW = document.getElementById( "viewport" );
 		CANVAS_VIEW.width = VIEW_WIDTH;
@@ -670,6 +683,11 @@ function win_load() {
 						CTX_ENT.translate( -36, -66 );
 						CTX_ENT.drawImage( SPRITES[ id * 4 ], 0, 0 );
 						CTX_ENT.setTransform( 1, 0, 0, 1, 0, 0 );
+						CTX_LIGHT.translate( -PLAYER_WIDTH + difference + 42, ( p.y | 0 ) + 60 + offset | 0 );
+						CTX_LIGHT.rotate( p.arm / 180 * Math.PI );
+						CTX_LIGHT.translate( -36, -66 );
+						CTX_LIGHT.drawImage( SPRITES[ 20 + id ], 0, 0 );
+						CTX_LIGHT.setTransform( 1, 0, 0, 1, 0, 0 );
 					} else {
 						CTX_ENT.scale( -1, 1 );
 						CTX_ENT.translate( -difference, p.y | 0 );
@@ -679,24 +697,39 @@ function win_load() {
 						CTX_ENT.translate( -36, -66 );
 						CTX_ENT.drawImage( SPRITES[ id * 4 ], 0, 0 );
 						CTX_ENT.setTransform( 1, 0, 0, 1, 0, 0 );
+						CTX_LIGHT.scale( -1, 1 );
+						CTX_LIGHT.translate( -difference + 42, ( p.y | 0 ) + 60 + offset );
+						CTX_LIGHT.rotate( ( 180 - p.arm ) / 180 * Math.PI );
+						CTX_LIGHT.translate( -36, -66 );
+						CTX_LIGHT.drawImage( SPRITES[ 20 + id ], 0, 0 );
+						CTX_LIGHT.setTransform( 1, 0, 0, 1, 0, 0 );
 					}
 				}
 				if( p.right ) {
 					CTX_ENT.translate( p.x | 0, p.y | 0 );
+					CTX_LIGHT.translate( p.x | 0, p.y | 0 );
 				} else {
 					CTX_ENT.translate( ( p.x | 0 ) + PLAYER_WIDTH, p.y | 0 );
 					CTX_ENT.scale( -1, 1 );
+					CTX_LIGHT.translate( ( p.x | 0 ) + PLAYER_WIDTH, p.y | 0 );
+					CTX_LIGHT.scale( -1, 1 );
 				}
 				CTX_ENT.drawImage( a, p.frame * PLAYER_WIDTH, 0, PLAYER_WIDTH, PLAYER_HEIGHT, 0, 0, PLAYER_WIDTH, PLAYER_HEIGHT );
 				CTX_ENT.translate( 42, 60 + offset );
+				CTX_LIGHT.translate( 42, 60 + offset );
 				if( p.right ) {
 					CTX_ENT.rotate( p.arm / 180 * Math.PI );
+					CTX_LIGHT.rotate( p.arm / 180 * Math.PI );
 				} else {
 					CTX_ENT.rotate( ( 180 - p.arm ) / 180 * Math.PI );
+					CTX_LIGHT.rotate( ( 180 - p.arm ) / 180 * Math.PI );
 				}
 				CTX_ENT.translate( -36, -66 );
+				CTX_LIGHT.translate( -36, -66 );
 				CTX_ENT.drawImage( SPRITES[ id * 4 ], 0, 0 );
+				CTX_LIGHT.drawImage( SPRITES[ 20 + id ], 0, 0 );
 				CTX_ENT.setTransform( 1, 0, 0, 1, 0, 0 );
+				CTX_LIGHT.setTransform( 1, 0, 0, 1, 0, 0 );
 			}
 		}
 
@@ -706,6 +739,7 @@ function win_load() {
 				g = grenades[ id ];
 				if( g.active ) {
 					CTX_ENT.drawImage( SPRITES[ id * 4 + 2 ], g.x | 0, g.y | 0 );
+					CTX_LIGHT.drawImage( SPRITES[ 24 + id ], ( g.x | 0 ) - 33, ( g.y | 0 ) - 33 );
 				}
 			}
 		}
@@ -734,6 +768,15 @@ function win_load() {
 	                CTX_ENT.drawImage( SPRITES[ 19 ], 0, 0, ANVIL_WIDTH, ANVIL_HEIGHT, -ANVIL_WIDTH + difference, anvil.y | 0, ANVIL_WIDTH, ANVIL_HEIGHT );
 	            }
             }   
+        }
+
+        function draw_light() {
+        	CTX_LIGHT.globalCompositeOperation = "destination-in";
+        	CTX_ENT.drawImage( CANVAS_TILE, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT );
+        	CTX_LIGHT.drawImage( CANVAS_ENT, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT );
+        	//CTX_LIGHT.globalCompositeOperation = "destination-over";
+			//CTX_LIGHT.fillStyle = "#1f1f1f";
+        	//CTX_LIGHT.fillRect( 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT );
         }
 
 		function game_loop( ts ) {
@@ -800,6 +843,9 @@ function win_load() {
 			update_grenade( 3 );
 
 			CTX_ENT.clearRect( 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT );
+			CTX_LIGHT.globalCompositeOperation = "source-over";
+			CTX_LIGHT.fillStyle = "#0f0f0f";
+        	CTX_LIGHT.fillRect( 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT );
 
 			// draw_anvil();
 			// draw_boss();
@@ -818,6 +864,7 @@ function win_load() {
 			view_x = ( p.x | 0 ) + PLAYER_HWIDTH - VIEW_HWIDTH;
 			view_y = ( p.y | 0 ) + PLAYER_HHEIGHT - VIEW_HHEIGHT;
 
+			CTX_VIEW.globalCompositeOperation = "source-over";
 			CTX_VIEW.clearRect( 0, 0, VIEW_WIDTH, VIEW_HEIGHT );
 			if( view_x < 0 ) {
 				CTX_VIEW.drawImage( CANVAS_BG, CANVAS_WIDTH + view_x, view_y, -view_x, VIEW_HEIGHT, 0, 0, -view_x, VIEW_HEIGHT );
@@ -828,11 +875,20 @@ function win_load() {
 			CTX_VIEW.drawImage( CANVAS_TILE, view_x, view_y, VIEW_WIDTH, VIEW_HEIGHT, 0, 0, VIEW_WIDTH, VIEW_HEIGHT );
 			CTX_VIEW.drawImage( CANVAS_ENT, view_x, view_y, VIEW_WIDTH, VIEW_HEIGHT, 0, 0, VIEW_WIDTH, VIEW_HEIGHT );
 			var extra = view_x + VIEW_WIDTH;
+			var extra_light = extra;
 			if( extra > CANVAS_WIDTH ) {
 				extra -= CANVAS_WIDTH;
 				CTX_VIEW.drawImage( CANVAS_BG, 0, view_y, extra, VIEW_HEIGHT, VIEW_WIDTH - extra, 0, extra, VIEW_HEIGHT );
 				CTX_VIEW.drawImage( CANVAS_TILE, 0, view_y, extra, VIEW_HEIGHT, VIEW_WIDTH - extra, 0, extra, VIEW_HEIGHT );
 				CTX_VIEW.drawImage( CANVAS_ENT, 0, view_y, extra, VIEW_HEIGHT, VIEW_WIDTH - extra, 0, extra, VIEW_HEIGHT );
+			}
+
+			draw_light();
+			CTX_VIEW.globalCompositeOperation = "multiply";
+			if( view_x < 0 ) CTX_VIEW.drawImage( CANVAS_LIGHT, CANVAS_WIDTH + view_x, view_y, -view_x, VIEW_HEIGHT, 0, 0, -view_x, VIEW_HEIGHT );
+			CTX_VIEW.drawImage( CANVAS_LIGHT, view_x, view_y, VIEW_WIDTH, VIEW_HEIGHT, 0, 0, VIEW_WIDTH, VIEW_HEIGHT );
+			if( extra_light > CANVAS_WIDTH ) {
+				CTX_VIEW.drawImage( CANVAS_LIGHT, 0, view_y, extra, VIEW_HEIGHT, VIEW_WIDTH - extra, 0, extra, VIEW_HEIGHT );
 			}
 
 			last_ts = ts;
