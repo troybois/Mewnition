@@ -1052,7 +1052,7 @@ function win_load() {
 						console.log( PLAYER_COUNT );
 						console.log( ACTIVE );
 						parse_active( msg.substring( 2 ) );
-						if( msg.substring( 6 ) ) {
+						if( msg.charCodeAt( 6 ) ) {
 							tiles = JSON.parse( msg.substring( 7 ) );
 							var tile_y, tile_x;
 							for( tile_y = 0; tile_y < tiles.length; tile_y++ ) {
