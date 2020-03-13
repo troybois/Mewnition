@@ -840,7 +840,7 @@ function win_load() {
 					}
 				}
 			}
-			if( ACTIVE.length > 0 && ME == ACTIVE[ 0 ] ) {
+			if( ACTIVE.length > 0 && ME == ACTIVE[ 0 ] && authoritative ) {
 				send( String.fromCharCode( 0x09 ) + JSON.stringify( tiles ) );
 			}
 
